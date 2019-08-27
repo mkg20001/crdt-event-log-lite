@@ -15,12 +15,14 @@ function EventLog ({actor, storage, type, swarm}) {
     const _storage = await storage(id)
 
     const tree = await Tree({
-      actorKey: actor.pubKey, // TODO: get key for chain from RPC
+      actorKey: actor, // TODO: get key for chain from RPC
       storage: _storage,
       rpcController
     })
 
     rpcController.subscribe(id, tree)
+
+    await type({storage, treeController: tree})
   }
 
   return {

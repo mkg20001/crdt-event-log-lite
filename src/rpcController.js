@@ -5,7 +5,7 @@ async function RPCController ({swarm}) {
     blockRequest: async (parameters) => { // TODO
 
     },
-    subscribe: async (chainId, {onEvent}) => {
+    subscribe: async (chainId, {onEvent}) => { // TODO: sub via pubsub
 
     }
   }

@@ -11,18 +11,25 @@ module.exports = () => {
     let db = DB[chainId]
 
     return {
-      put: (entryId, blockValue) => {
-        db[entryId] = blockValue
+      put: (entryId, entryValue) => {
+        db[entryId] = entryValue
         return true
       },
-      get: (entryId) => { // TODO: should this throw if block doesn't exist
-        return db[entryId]
+      putJSON: (entryId, entryValue) => {
+        db[entryId] = entryValue
+        return true
       },
-      del: (entryId) => { // TODO: should this throw if block doesn't exist
+      get: (entryId, def) => { // TODO: should this throw if entry doesn't exist
+        return db[entryId] === undefined ? def : db[entryId]
+      },
+      getJSON: (entryId, def) => { // TODO: should this throw if entry doesn't exist
+        return db[entryId] === undefined ? def : db[entryId]
+      },
+      del: (entryId) => { // TODO: should this throw if entry doesn't exist
         delete db[entryId]
       },
-      delDb: () => { // TODO
-
+      delDb: () => {
+        db = DB[chainId] = null
       }
     }
   }

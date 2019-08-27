@@ -12,10 +12,8 @@ const log = debug('crdt-event-log-lite:tree')
 const BlockController = require('./blockController')
 
 async function Tree ({actorKey, storage, rpcController}) {
-  // const payloadProcessor = await payloadLayer({isOwner, storage}) // TODO: init this in main
-
-  const isOnline = Boolean(rpcController)
   const blockController = await BlockController({rpcController, storage})
+  let payloadProcess
 
   const chainState = await storage.getJSON('_chainState', {})
   const actorState = await storage.getJSON('_actorState', {})
@@ -43,7 +41,7 @@ async function Tree ({actorKey, storage, rpcController}) {
       throw new Error('Multi-actor chain not supported yet!')
     }
 
-    const sigIsOk = await actorKey.verify(eventData, signature)
+    const sigIsOk = await actorKey.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
     if (!sigIsOk) {
       throw new Error('Signature is bad')
     }
@@ -99,11 +97,12 @@ async function Tree ({actorKey, storage, rpcController}) {
     }
 
     log('chain#action=%s ACCEPT', actionHex)
+    const {payload, prev} = Action.decode(action)
 
-    await safePayloadProcess(actionHex, action.payload)
+    await safePayloadProcess(actionHex, payload)
 
     // TODO: fix race rm queue and add queue
-    action.prev.map(syncUpToAction) // launch parallel sync (possibly add queue later)
+    prev.map(syncUpToAction) // launch parallel sync (possibly add queue later)
 
     await saveProcessed(actionHex)
     await saveQueueRemove(actionHex)
@@ -130,17 +129,9 @@ async function Tree ({actorKey, storage, rpcController}) {
   }
 
   return {
-    onEvent: verifyEvent
+    onEvent: verifyEvent,
+    attach: (_payloadProcess) => (payloadProcess = _payloadProcess)
   }
-
-  /* if (isOnline) {
-    rpcController.subscribe(id, {
-      fetch: async (id) => id.startsWith('_') ? null : storage.get(id),
-      process: async (data) => { // we get new blocks via pubsub or rpc
-
-      }
-    })
-  } */
 }
 
 module.exports = Tree

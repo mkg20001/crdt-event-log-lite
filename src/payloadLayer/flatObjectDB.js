@@ -19,126 +19,70 @@ const {Payload, PayloadType} = protons(`
   }
 `)
 
-module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
-  const object = {}
-  const objectCache = {}
+module.exports = async ({storage, treeController}) => {
+  let keys = await storage.getJSON('_keys', [])
+  const keyRevisions = await storage.getJSON('_keyRevisions', {})
 
-  object._delete = async (key) => {
-    if (!isOwner) {
-      throw new Error('Cannot delete values in non-owned tree!')
+  const cache = {}
+
+  async function getKey (key) {
+    if (cache[key]) {
+      return cache[key]
+    } else {
+      let prom = cache[key] = fetchKey(key)
+      cache[key] = await prom
+      return prom
     }
+  }
 
-    await treeController.append(Payload.encode({
-      payloadType: PayloadType.DELETE,
+  async function setKey (key, val) {
+    let rev = (keyRevisions[key] || 0) + 1
+
+    await treeController.append({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+      payloadType: PayloadType.PUT,
       key,
-      changeId: 1 // TODO: add
-    }))
-
-    deleteDynamicKey(key)
-  }
-
-  async function saveKeys (_keys) {
-    keys = _keys
-    await storage.put('_keys', JSON.stringify(keys)) // TODO: storage putJSON, getJSON etc?
-  }
-
-  async function saveRevisions (key, rev) {
-    log('saving key %o rev %o', key, rev)
-    keyRevisions[key] = rev
-    await storage.put('_keyRevisions', JSON.stringify(keyRevisions)) // TODO: storage putJSON, getJSON etc?
-  }
-
-  async function fetchFromCache (key) {
-    log('fetching from cache %s', key)
-
-    // TODO: maybe wait for block changes to arrive? or sth like that?
-
-    const val = await storage.get('_val_' + key)
-    const res = val ? JSON.parse(val) : null
-
-    objectCache[key] = res
-  }
-
-  async function processValueChange (key, val) {
-    objectCache[key] = val
-    await storage.put('_val_' + key, JSON.stringify(val))
-  }
-
-  async function createDynamicKey (key) {
-    if (keys.indexOf(key) === -1) {
-      keys.push(key)
-      await saveKeys(keys)
-    }
-
-    Object.defineProperty(object, 'key', {
-      set: async (val) => {
-        if (isOwner) {
-          await treeController.append(Payload.encode({
-            payloadType: PayloadType.PUT,
-            key,
-            changeId: 1, // TODO: add
-            newValue: JSON.stringify(val)
-          }))
-
-          await processValueChange(key, val)
-        } else {
-          throw new Error('Cannot change values in non-owned tree!')
-        }
-      },
-      get: () => {
-        if (!objectCache[key]) {
-          objectCache[key] = fetchFromCache(key)
-        }
-
-        return objectCache[key]
-      }
+      changeId: rev,
+      value: Buffer.from(JSON.stringify(val))
     })
   }
 
-  async function deleteDynamicKey (key) {
-    log('deleting %s', key)
-    delete objectCache[key]
-    delete object[key]
-    await saveKeys(keys.filter(k => k !== key))
-  }
-
-  let keys = await storage.get('_keys') // TODO: make object
-  if (keys) {
-    keys = JSON.parse(keys)
-  } else {
-    keys = []
-  }
-
-  let keyRevisions = await storage.get('_keyRevisions') // TODO: make object
-  if (keyRevisions) {
-    keyRevisions = JSON.parse(keyRevisions)
-  } else {
-    keyRevisions = {}
-  }
-
-  await Promise.all(keys.map((key) => {
-    createDynamicKey(key)
-    if (prefetch) {
-      fetchFromCache(key)
+  async function delKey (key) {
+    if (keys.indexOf(key) === -1) {
+      return true
     }
-  }))
 
-  treeController.attachProcessor(async (payload) => { // processor gets called for each block one by one
+    let rev = keyRevisions[key] + 1
+
+    await treeController.append({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+      payloadType: PayloadType.DELETE,
+      key,
+      changeId: rev
+    })
+  }
+
+  async function fetchKey (key) {
+    const res = await storage.getJSON('_val_' + key)
+    if (res) {
+      return res
+    } else {
+      // await treeController.blockUntilSynced()
+      throw new Error('Should fetch from tree here')
+    }
+  }
+
+  async function payloadProcess (payload) { // processor gets called for each block one by one
     const {payloadType, key, changeId, value} = Payload.decode(payload)
     if (keyRevisions[key] > changeId) { // if we have a newer change id
-      return false // tell treeController this block isn't necesarry for consenus, since it's supperseeded (TODO: use)
+      log('flatDb#payload=%s~%s IGNORE [changeId]', key, changeId)
     } else {
+      log('flatDb#payload=%s~%s ACCEPT', key, changeId)
       switch (payloadType) {
         case PayloadType.PUT:
-          if (keys.indexOf(key) === -1) { // new key
-            createDynamicKey(key)
-          }
+          await saveKeyAdd(key) // adds if not exist
           await processValueChange(key, JSON.parse(String(value))) // update value
           break
         case PayloadType.DELETE:
-          if (keys.indexOf(key) !== -1) { // if we had this key (if we get the deleted event, but we never had this key before, we can ignore this)
-            deleteDynamicKey(key)
-          }
+          await saveKeyRemove(key)
           break
         default: {
           throw new TypeError('Invalid PayloadType ' + payloadType)
@@ -147,5 +91,44 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
 
       await saveRevisions(key, changeId)
     }
-  })
+  }
+
+  async function processValueChange (key, val) {
+    cache[key] = val
+    await storage.putJSON('_val_' + key, val)
+  }
+
+  async function saveKeyAdd (key) {
+    if (keys.indexOf(key) === -1) {
+      keys.push(key)
+      await storage.putJSON('_keys', keys) // TODO: storage putJSON, getJSON etc?
+    }
+  }
+
+  async function saveKeyRemove (key) {
+    if (keys.indexOf(key) !== -1) {
+      keys = keys.filter(k => k !== key)
+      await storage.putJSON('_keys', keys) // TODO: storage putJSON, getJSON etc?
+      await storage.delete('_val_' + key)
+    }
+  }
+
+  async function saveRevisions (key, rev) {
+    log('saving key %o rev %o', key, rev)
+    keyRevisions[key] = rev
+    await storage.put('_keyRevisions', keyRevisions) // TODO: storage putJSON, getJSON etc?
+  }
+
+  return {
+    user: {
+      public: {
+        getKey
+      },
+      private: {
+        setKey,
+        delKey
+      }
+    },
+    payloadProcess
+  }
 }
