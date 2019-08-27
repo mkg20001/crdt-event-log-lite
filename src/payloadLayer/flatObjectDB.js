@@ -54,6 +54,11 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     objectCache[key] = res
   }
 
+  async function processValueChange (key, val) {
+    objectCache[key] = val
+    await storage.put('_val_' + key, JSON.stringify(val))
+  }
+
   function createDynamicKey (key) {
     Object.defineProperty(object, 'key', {
       set: async (val) => {
@@ -65,7 +70,7 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
             newValue: JSON.stringify(val)
           }))
 
-          objectCache[key] = val
+          await processValueChange(key, val)
         } else {
           throw new Error('Cannot change values in non-owned tree!')
         }
@@ -86,7 +91,7 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     delete object[key]
   }
 
-  let keys = await storage.get('_keys')
+  let keys = await storage.get('_keys') // TODO: make object
   if (keys) {
     keys = JSON.parse(keys)
   } else {
@@ -99,4 +104,28 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
       fetchFromCache(key)
     }
   }))
+
+  treeController.attachProcessor(async (payload) => {
+    const {payloadType, key, changeId, value} = Payload.decode(payload)
+    if (keys[key] > changeId) { // if we have a newer change id
+      return false // tell treeController this block isn't necesarry for consenus, since it's supperseeded (TODO: use)
+    } else {
+      switch (payloadType) {
+        case PayloadType.PUT:
+          if (keys.indexOf(key) === -1) { // new key
+            createDynamicKey(key)
+          }
+          await processValueChange(key, JSON.parse(String(value))) // update value
+          break
+        case PayloadType.DELETE:
+          if (keys.indexOf(key) !== -1) { // if we had this key (if we get the deleted event, but we never had this key before, we can ignore this)
+            deleteDynamicKey(key)
+          }
+          break
+        default: {
+          throw new TypeError('Invalid PayloadType ' + payloadType)
+        }
+      }
+    }
+  })
 }
