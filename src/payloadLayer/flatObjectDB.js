@@ -35,12 +35,17 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     }))
 
     deleteDynamicKey(key)
-    saveKeys(keys.filter(k => k !== key))
   }
 
   async function saveKeys (_keys) {
     keys = _keys
     await storage.put('_keys', JSON.stringify(keys)) // TODO: storage putJSON, getJSON etc?
+  }
+
+  async function saveRevisions (key, rev) {
+    log('saving key %o rev %o', key, rev)
+    keyRevisions[key] = rev
+    await storage.put('_keyRevisions', JSON.stringify(keyRevisions)) // TODO: storage putJSON, getJSON etc?
   }
 
   async function fetchFromCache (key) {
@@ -59,7 +64,12 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     await storage.put('_val_' + key, JSON.stringify(val))
   }
 
-  function createDynamicKey (key) {
+  async function createDynamicKey (key) {
+    if (keys.indexOf(key) === -1) {
+      keys.push(key)
+      await saveKeys(keys)
+    }
+
     Object.defineProperty(object, 'key', {
       set: async (val) => {
         if (isOwner) {
@@ -85,10 +95,11 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     })
   }
 
-  function deleteDynamicKey (key) {
+  async function deleteDynamicKey (key) {
     log('deleting %s', key)
     delete objectCache[key]
     delete object[key]
+    await saveKeys(keys.filter(k => k !== key))
   }
 
   let keys = await storage.get('_keys') // TODO: make object
@@ -98,6 +109,13 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     keys = []
   }
 
+  let keyRevisions = await storage.get('_keyRevisions') // TODO: make object
+  if (keyRevisions) {
+    keyRevisions = JSON.parse(keyRevisions)
+  } else {
+    keyRevisions = {}
+  }
+
   await Promise.all(keys.map((key) => {
     createDynamicKey(key)
     if (prefetch) {
@@ -105,9 +123,9 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
     }
   }))
 
-  treeController.attachProcessor(async (payload) => {
+  treeController.attachProcessor(async (payload) => { // processor gets called for each block one by one
     const {payloadType, key, changeId, value} = Payload.decode(payload)
-    if (keys[key] > changeId) { // if we have a newer change id
+    if (keyRevisions[key] > changeId) { // if we have a newer change id
       return false // tell treeController this block isn't necesarry for consenus, since it's supperseeded (TODO: use)
     } else {
       switch (payloadType) {
@@ -126,6 +144,8 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
           throw new TypeError('Invalid PayloadType ' + payloadType)
         }
       }
+
+      await saveRevisions(key, changeId)
     }
   })
 }
