@@ -5,7 +5,6 @@
 const Id = require('peer-id')
 
 const EventLog = require('..')
-const Storage = require('../src/store/ram')
 
 describe('eventTree', () => {
   let actorId
@@ -16,11 +15,12 @@ describe('eventTree', () => {
     actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
   })
 
-  it('can create an event log', () => {
-    controller = EventLog({
+  it('can create an event log', async () => {
+    controller = await EventLog.create({
       actor: actorId,
-      storage: Storage()
+      storage: await EventLog.Storage.RAM(),
       // swarm: null // means we're offline
+      layer: EventLog.Layer.FlatObjectDB
     })
   })
 

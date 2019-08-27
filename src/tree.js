@@ -2,14 +2,25 @@
 
 const {Event, Action, SignedEvent} = require('./proto')
 
-async function Tree (id, {isOwner, storage, rpcController, payloadLayer}) {
+async function Tree ({actorKey, isOwner, storage, rpcController, payloadLayer}) {
   const payloadProcessor = await payloadLayer({isOwner, storage})
 
-  const lastEventBlock = await storage.get('_latest')
   const isOnline = Boolean(rpcController)
 
-  if (lastEventBlock) {
+  const chainState = await storage.getJSON('_chainState')
 
+  async function verifyEvent (data) {
+    const {actor, event, signature} = SignedEvent.decode(data)
+    const eventData = Event.encode(event)
+
+    if (actor !== actorKey.id.toB58String()) {
+      throw new Error('Multi-actor chain not supported yet!')
+    }
+
+    const sigIsOk = await actorKey.verify(eventData, signature)
+    if (!sigIsOk) {
+      throw new Error('Signature is bad')
+    }
   }
 
   /* if (isOnline) {
