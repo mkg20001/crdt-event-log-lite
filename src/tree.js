@@ -129,7 +129,9 @@ async function Tree ({storage, rpcController, blockController}) {
   return {
     onEvent: verifyEvent,
     attach: (_payloadProcess) => (payloadProcess = _payloadProcess),
-    attachBlockController: (_blockController) => (blockController = _blockController)
+    attachBlockController: (_blockController) => (blockController = _blockController),
+    chainState,
+    actorState
   }
 }
 

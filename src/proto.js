@@ -17,37 +17,35 @@ const protons = require('protons')
   /
 } */
 
-module.exports = protons(`
-  message Action {
-    repeated bytes prev = 1;
-    bytes payload = 2; // Payload data
-  }
+module.exports = protons(`message Action {
+  repeated bytes prev = 1;
+  bytes payload = 2; // Payload data
+}
 
-  message Event {
-    int64 eventCounter = 1;
-    repeated bytes prev = 2;
-    bytes actionId = 3;
-    int64 eventHash = 4;
-  }
+message Event {
+  int64 eventCounter = 1;
+  repeated bytes prev = 2;
+  bytes actionId = 3;
+  int64 eventHash = 4;
+}
 
-  message SignedEvent {
-    bytes actorId = 1;
-    Event event = 2;
-    bytes signature = 3;
-  }
-/*
-  Enum BlockType {
-    EVENT  = 1;
-    ACTION = 2;
-  }
+message SignedEvent {
+  bytes actorId = 1;
+  Event event = 2;
+  bytes signature = 3;
+}
 
-  messsage BlockRequest {
-    BlockType blockType = 1;
-    bytes blockId = 2; // if type is action and no blockId, peer will give us latest
-  }
+Enum BlockType {
+  EVENT  = 1;
+  ACTION = 2;
+}
 
-  message BlockResponse {
-    bytes blockId = 1;
-    bytes blockContent = 2;
-  }*/
-`)
+messsage BlockRequest {
+  BlockType blockType = 1;
+  bytes blockId = 2; // if type is action and no blockId, peer will give us latest
+}
+
+message BlockResponse {
+  bytes blockId = 1;
+  bytes blockContent = 2;
+}`)

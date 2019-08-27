@@ -5,8 +5,8 @@ const multihashing = require('multihashing-async')
 
 async function TreeController (id, {tree, actorKey, blockHash, rpcController, blockController}) {
   async function append (payload) {
-    const actorId = actorKey.id._id
-    const actorB58 = actorKey.id.toB58String()
+    const actorId = actorKey.id
+    const actorB58 = actorKey._idB58String
 
     const action = Action.encode({
       prev: [tree.chainState.action],
