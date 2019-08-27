@@ -26,11 +26,11 @@ module.exports = protons(`
     ACTION = 2;
   }
 
-  message BlockRequest {
+  /* message BlockRequest {
     BlockType blockType = 1;
     bytes lastKnownAction = 2;
     bool iterate = 3; // send all action blocks
-    /*
+    /
     If we subscribe to a new chain, we do
     {blockType: EVENT, lastKnownAction: null, iterate: true}
     to get the latest block for the chain
@@ -38,6 +38,16 @@ module.exports = protons(`
 
     NOTE: new memebers of the chain get the blocks from latest to oldest, while older memebers get the blocks from oldest to newest
     The payload processor should account for that
-    */
+    /
+  } */
+
+  messsage BlockRequest {
+    BlockType blockType = 1;
+    bytes blockId = 2; // if type is action and no blockId, peer will give us latest
+  }
+
+  message BlockResponse {
+    bytes blockId = 1;
+    bytes blockContent = 2;
   }
 `)
