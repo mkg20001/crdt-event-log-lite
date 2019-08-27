@@ -9,10 +9,7 @@ const Id = require('peer-id')
 const debug = require('debug')
 const log = debug('crdt-event-log-lite:tree')
 
-const BlockController = require('./blockController')
-
-async function Tree ({actorKey, storage, rpcController}) {
-  const blockController = await BlockController({rpcController, storage})
+async function Tree ({storage, rpcController, blockController}) {
   let payloadProcess
 
   const chainState = await storage.getJSON('_chainState', {})

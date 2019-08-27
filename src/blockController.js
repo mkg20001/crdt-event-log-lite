@@ -1,7 +1,11 @@
 'use strict'
 
-async function BlockController ({storage, rpcController}) {
+async function BlockController (id, {storage, rpcController, tree}) {
   const isOnline = Boolean(rpcController)
+
+  if (isOnline) {
+    rpcController.subscribe(id, tree)
+  }
 
   return {
     fetch: async (blockType, blockId) => {

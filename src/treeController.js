@@ -1,10 +1,43 @@
 'use strict'
 
-async function TreeController ({tree, isOwner, actorKey}) {
-  return {
-    append: (payload) => {
+const {Action, Event, SignedEvent} = require('./proto')
+const multihashing = require('multihashing-async')
 
+async function TreeController (id, {tree, actorKey, blockHash, rpcController, blockController}) {
+  async function append (payload) {
+    const actorId = actorKey.id._id
+    const actorB58 = actorKey.id.toB58String()
+
+    const action = Action.encode({
+      prev: [tree.chainState.action],
+      payload
+    })
+
+    const actionId = await multihashing(action, blockHash)
+
+    const eventCounter = tree.actorState[actorB58] + 1
+
+    const eventData = {
+      prev: [tree.chainState.event],
+      eventCounter,
+      actionId,
+      eventHash: blockHash
     }
+
+    const event = SignedEvent.encode({
+      actorId,
+      event: eventData,
+      signature: await actorKey.sign(Event.encode(eventData))
+    })
+
+    const eventId = await multihashing(event, blockHash)
+
+    await blockController.announce(eventId, event)
+    await tree.onEvent(eventId, event)
+  }
+
+  return {
+    append
   }
 }
 
