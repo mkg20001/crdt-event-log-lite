@@ -9,12 +9,14 @@ module.exports = protons(`
   }
 
   message Event {
-    bytes action = 1;
+    int64 eventCounter = 1;
     repeated bytes prev = 2;
+    bytes actionId = 3;
+    bytes eventHash = 4;
   }
 
   message SignedEvent {
-    bytes actor = 1;
+    bytes actorId = 1;
     Event event = 2;
     bytes signature = 3;
   }

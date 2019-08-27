@@ -21,6 +21,7 @@ describe('eventTree', () => {
       storage: await EventLog.Storage.RAM(),
       // swarm: null // means we're offline
       layer: EventLog.Layer.FlatObjectDB
+      // collabrationStructure: EventLog.Collabrate.BenevolentDictator
     })
   })
 
