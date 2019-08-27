@@ -3,23 +3,23 @@
 module.exports = () => {
   const DB = {}
 
-  return (actorId) => {
-    if (!DB[actorId]) {
-      DB[actorId] = {}
+  return (chainId) => {
+    if (!DB[chainId]) {
+      DB[chainId] = {}
     }
 
-    let db = DB[actorId]
+    let db = DB[chainId]
 
     return {
-      put: (blockId, blockValue) => {
-        db[blockId] = blockValue
+      put: (entryId, blockValue) => {
+        db[entryId] = blockValue
         return true
       },
-      get: (blockId) => { // TODO: should this throw if block doesn't exist
-        return db[blockId]
+      get: (entryId) => { // TODO: should this throw if block doesn't exist
+        return db[entryId]
       },
-      del: (blockId) => { // TODO: should this throw if block doesn't exist
-        delete db[blockId]
+      del: (entryId) => { // TODO: should this throw if block doesn't exist
+        delete db[entryId]
       },
       delDb: () => { // TODO
 

@@ -13,14 +13,35 @@ const {Payload, PayloadType} = protons(`
 
   message Payload {
     PayloadType payloadType = 1;
-    int64 changeId = 2;
-    bytes newValue = 3;
+    string key = 2;
+    int64 changeId = 3;
+    bytes newValue = 4;
   }
 `)
 
 module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
   const object = {}
   const objectCache = {}
+
+  object._delete = async (key) => {
+    if (!isOwner) {
+      throw new Error('Cannot delete values in non-owned tree!')
+    }
+
+    await treeController.append(Payload.encode({
+      payloadType: PayloadType.DELETE,
+      key,
+      changeId: 1 // TODO: add
+    }))
+
+    deleteDynamicKey(key)
+    saveKeys(keys.filter(k => k !== key))
+  }
+
+  async function saveKeys (_keys) {
+    keys = _keys
+    await storage.put('_keys', JSON.stringify(keys)) // TODO: storage putJSON, getJSON etc?
+  }
 
   async function fetchFromCache (key) {
     log('fetching from cache %s', key)
@@ -39,6 +60,7 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
         if (isOwner) {
           await treeController.append(Payload.encode({
             payloadType: PayloadType.PUT,
+            key,
             changeId: 1, // TODO: add
             newValue: JSON.stringify(val)
           }))
@@ -59,7 +81,9 @@ module.exports = async ({isOwner, storage, treeController}, {prefetch}) => {
   }
 
   function deleteDynamicKey (key) {
-
+    log('deleting %s', key)
+    delete objectCache[key]
+    delete object[key]
   }
 
   let keys = await storage.get('_keys')
