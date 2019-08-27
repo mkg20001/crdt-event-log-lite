@@ -3,6 +3,7 @@
 /* eslint-env mocha */
 
 const Id = require('peer-id')
+const assert = require('assert')
 
 const EventLog = require('..')
 
@@ -20,13 +21,20 @@ describe('eventTree', () => {
       actor: actorId,
       storage: await EventLog.Storage.RAM(),
       // swarm: null // means we're offline
-      layer: EventLog.Layer.FlatObjectDB
+      type: EventLog.Type.FlatObjectDB
       // collabrationStructure: EventLog.Collabrate.BenevolentDictator
     })
   })
 
-  it('can create a tree with an actor peer-id', () => {
-    tree = controller.ownTree
-    controller.ownTree.firstBlock()
+  it('can create a tree with an actor peer-id', async () => {
+    tree = await controller.load('test')
+  })
+
+  it('can change keys', async () => {
+    await tree.write.setKey('hello', true)
+  })
+
+  it('can read keys', async () => {
+    assert(await tree.read.getKey('hello'))
   })
 })

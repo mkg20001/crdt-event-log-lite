@@ -1,11 +1,11 @@
 'use strict'
 
 const Tree = require('./tree')
-const RPCController = require('./rpc')
+const RPCController = require('./rpcController')
 const BlockController = require('./blockController')
-const TreeController = require('./TreeController')
+const TreeController = require('./treeController')
 
-function EventLog ({actor, storage, type, swarm, blockHash}) {
+function EventLog ({actor, storage: storageController, type, swarm, blockHash}) {
   const isOnline = Boolean(swarm)
 
   if (!blockHash) {
@@ -18,10 +18,10 @@ function EventLog ({actor, storage, type, swarm, blockHash}) {
   }
 
   async function loadChain (id) {
-    const _storage = await storage(id)
+    const storage = await storageController(id)
 
     const tree = await Tree({
-      storage: _storage
+      storage
     })
 
     const blockController = await BlockController(id, {rpcController, storage, tree})

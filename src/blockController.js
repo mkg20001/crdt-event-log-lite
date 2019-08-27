@@ -25,6 +25,9 @@ async function BlockController (id, {storage, rpcController, tree}) {
       } else {
         throw new Error('Block not found in storage and not online!')
       }
+    },
+    announce: (eventId, event) => {
+
     }
   }
 }

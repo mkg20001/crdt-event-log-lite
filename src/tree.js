@@ -2,7 +2,7 @@
 
 const {Event, Action, SignedEvent, BlockType} = require('./proto')
 
-const multihash = require('multihash')
+const multihash = require('multihashes')
 const multihashing = require('multihashing-async')
 const Id = require('peer-id')
 
