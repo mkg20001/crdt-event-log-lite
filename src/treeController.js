@@ -32,8 +32,8 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
 
     const eventId = await multihashing(event, blockHash)
 
-    await blockController.announce(eventId, event)
     await tree.onEvent(eventId, event)
+    await blockController.announce(eventId, event)
   }
 
   return {

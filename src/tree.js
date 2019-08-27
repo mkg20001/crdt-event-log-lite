@@ -22,6 +22,7 @@ async function Tree ({storage, rpcController, blockController}) {
     const eventData = Event.encode(event)
 
     let hashName
+    let blockController
 
     if (!eventId) { // if we just get raw data
       hashName = event.eventHash // TODO: get hash name from that
@@ -127,7 +128,8 @@ async function Tree ({storage, rpcController, blockController}) {
 
   return {
     onEvent: verifyEvent,
-    attach: (_payloadProcess) => (payloadProcess = _payloadProcess)
+    attach: (_payloadProcess) => (payloadProcess = _payloadProcess),
+    attachBlockController: (_blockController) => (blockController = _blockController)
   }
 }
 

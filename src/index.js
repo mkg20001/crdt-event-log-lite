@@ -5,7 +5,7 @@ const RPCController = require('./rpc')
 const BlockController = require('./blockController')
 const TreeController = require('./TreeController')
 
-function EventLog ({actor, storage, type, swarm}) {
+function EventLog ({actor, storage, type, swarm, blockHash}) {
   const isOnline = Boolean(swarm)
 
   let rpcController
@@ -21,9 +21,16 @@ function EventLog ({actor, storage, type, swarm}) {
     })
 
     const blockController = await BlockController(id, {rpcController, storage, tree})
-    const treeController = await TreeController(id, {tree, actorKey: actor, blockHash, rpcController})
+    const treeController = await TreeController(id, {tree, actorKey: actor, blockHash, rpcController, blockController})
 
-    await type({storage, treeController})
+    tree.attachBlockController(blockController)
+    const structure = await type({storage, treeController})
+    tree.attach(structure.payloadProcess)
+
+    return {
+      read: structure.public,
+      write: structure.private
+    }
   }
 
   return {
