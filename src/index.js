@@ -1,9 +1,31 @@
 'use strict'
 
 const Tree = require('./tree')
+const RPCController = require('./rpc')
 
-function EventLog ({actor, storage, swarm}) {
+function EventLog ({actor, storage, type, swarm}) {
+  const isOnline = Boolean(swarm)
 
+  let rpcController
+  if (isOnline) {
+    rpcController = RPCController(swarm)
+  }
+
+  async function loadChain (id) {
+    const _storage = await storage(id)
+
+    const tree = await Tree({
+      actorKey: actor.pubKey, // TODO: get key for chain from RPC
+      storage: _storage,
+      rpcController
+    })
+
+    rpcController.subscribe(id, tree)
+  }
+
+  return {
+    load: loadChain
+  }
 }
 
 module.exports = {
