@@ -28,8 +28,8 @@ function EventLog ({actor, storage, type, swarm, blockHash}) {
     tree.attach(structure.payloadProcess)
 
     return {
-      read: structure.public,
-      write: structure.private
+      read: structure.user.public,
+      write: structure.user.private
     }
   }
 

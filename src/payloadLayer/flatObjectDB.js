@@ -101,22 +101,22 @@ module.exports = async ({storage, treeController}) => {
   async function saveKeyAdd (key) {
     if (keys.indexOf(key) === -1) {
       keys.push(key)
-      await storage.putJSON('_keys', keys) // TODO: storage putJSON, getJSON etc?
+      await storage.putJSON('_keys', keys)
     }
   }
 
   async function saveKeyRemove (key) {
     if (keys.indexOf(key) !== -1) {
       keys = keys.filter(k => k !== key)
-      await storage.putJSON('_keys', keys) // TODO: storage putJSON, getJSON etc?
-      await storage.delete('_val_' + key)
+      await storage.putJSON('_keys', keys)
+      await storage.del('_val_' + key)
     }
   }
 
   async function saveRevisions (key, rev) {
     log('saving key %o rev %o', key, rev)
     keyRevisions[key] = rev
-    await storage.put('_keyRevisions', keyRevisions) // TODO: storage putJSON, getJSON etc?
+    await storage.putJSON('_keyRevisions', keyRevisions) // TODO: storage putJSON, getJSON etc?
   }
 
   return {
