@@ -12,7 +12,7 @@ module.exports = protons(`
     int64 eventCounter = 1;
     repeated bytes prev = 2;
     bytes actionId = 3;
-    bytes eventHash = 4;
+    int64 eventHash = 4;
   }
 
   message SignedEvent {

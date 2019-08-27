@@ -8,6 +8,10 @@ const TreeController = require('./TreeController')
 function EventLog ({actor, storage, type, swarm, blockHash}) {
   const isOnline = Boolean(swarm)
 
+  if (!blockHash) {
+    blockHash = require('multihashes').names['sha2-512']
+  }
+
   let rpcController
   if (isOnline) {
     rpcController = RPCController(swarm)
