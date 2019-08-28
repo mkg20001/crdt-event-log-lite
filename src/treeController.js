@@ -5,11 +5,11 @@ const multihashing = require('multihashing-async')
 
 async function TreeController (id, {tree, actorKey, blockHash, rpcController, blockController}) {
   async function append (payload) {
-    const actorId = actorKey.id
-    const actorB58 = actorKey._idB58String
+    const actorId = actorKey._id
+    const actorB58 = actorKey.toB58String()
 
     const action = Action.encode({
-      prev: [tree.chainState.action],
+      prev: tree.chainState.action,
       payload
     })
 
@@ -18,7 +18,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
     const eventCounter = tree.actorState[actorB58] + 1
 
     const eventData = {
-      prev: [tree.chainState.event],
+      prev: tree.chainState.event ? [tree.chainState.event] : [],
       eventCounter,
       actionId,
       eventHash: blockHash
@@ -27,7 +27,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
     const event = SignedEvent.encode({
       actorId,
       event: eventData,
-      signature: await actorKey.sign(Event.encode(eventData))
+      signature: await actorKey.privKey.sign(Event.encode(eventData))
     })
 
     const eventId = await multihashing(event, blockHash)

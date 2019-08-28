@@ -35,9 +35,9 @@ async function Tree ({storage, rpcController, blockController}) {
       }
     }
 
-    if (!actorKey.id.equals(actorId)) {
-      throw new Error('Multi-actor chain not supported yet!')
-    }
+    const actorKey = getActorKey(actorId)
+
+    // TODO: currently anyone can write anything
 
     const sigIsOk = await actorKey.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
     if (!sigIsOk) {

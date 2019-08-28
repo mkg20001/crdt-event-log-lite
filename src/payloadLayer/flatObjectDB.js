@@ -38,12 +38,12 @@ module.exports = async ({storage, treeController}) => {
   async function setKey (key, val) {
     let rev = (keyRevisions[key] || 0) + 1
 
-    await treeController.append({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+    await treeController.append(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
       payloadType: PayloadType.PUT,
       key,
       changeId: rev,
       value: Buffer.from(JSON.stringify(val))
-    })
+    }))
   }
 
   async function delKey (key) {
@@ -53,11 +53,11 @@ module.exports = async ({storage, treeController}) => {
 
     let rev = keyRevisions[key] + 1
 
-    await treeController.append({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+    await treeController.append(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
       payloadType: PayloadType.DELETE,
       key,
       changeId: rev
-    })
+    }))
   }
 
   async function fetchKey (key) {

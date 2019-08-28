@@ -18,7 +18,7 @@ const protons = require('protons')
 } */
 
 module.exports = protons(`message Action {
-  repeated bytes prev = 1;
+  bytes prev = 1;
   bytes payload = 2; // Payload data
 }
 
@@ -35,12 +35,12 @@ message SignedEvent {
   bytes signature = 3;
 }
 
-Enum BlockType {
+enum BlockType {
   EVENT  = 1;
   ACTION = 2;
 }
 
-messsage BlockRequest {
+message BlockRequest {
   BlockType blockType = 1;
   bytes blockId = 2; // if type is action and no blockId, peer will give us latest
 }
