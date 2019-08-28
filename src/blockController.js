@@ -7,9 +7,17 @@ async function BlockController (id, {storage, rpcController, tree}) {
     rpcController.subscribe(id, tree)
   }
 
+  const unprocessed = {}
+
   return {
     fetch: async (blockType, blockId) => {
       let hex = blockId.toString('hex')
+
+      if (unprocessed[hex]) {
+        const res = unprocessed[hex]
+        delete unprocessed[hex]
+        return res
+      }
 
       const fromStorage = await storage.get(hex)
 
@@ -28,6 +36,9 @@ async function BlockController (id, {storage, rpcController, tree}) {
     },
     announce: (eventId, event) => {
 
+    },
+    addUnprocessed: (id, data) => {
+      unprocessed[id] = data
     }
   }
 }

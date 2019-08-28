@@ -15,7 +15,7 @@ const {Payload, PayloadType} = protons(`
     PayloadType payloadType = 1;
     string key = 2;
     int64 changeId = 3;
-    bytes newValue = 4;
+    bytes value = 4;
   }
 `)
 
@@ -70,7 +70,7 @@ module.exports = async ({storage, treeController}) => {
     }
   }
 
-  async function payloadProcess (payload) { // processor gets called for each block one by one
+  async function payloadProcess (id, payload) { // processor gets called for each block one by one
     const {payloadType, key, changeId, value} = Payload.decode(payload)
     if (keyRevisions[key] > changeId) { // if we have a newer change id
       log('flatDb#payload=%s~%s IGNORE [changeId]', key, changeId)

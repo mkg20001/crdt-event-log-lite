@@ -8,9 +8,11 @@ const Id = require('peer-id')
 
 const debug = require('debug')
 const log = debug('crdt-event-log-lite:tree')
+const Queue = require('./queue')
 
-async function Tree ({storage, rpcController, blockController}) {
+async function Tree ({storage, rpcController}) {
   let payloadProcess
+  let blockController
 
   const chainState = await storage.getJSON('_chainState', {})
   const actorState = await storage.getJSON('_actorState', {})
@@ -22,7 +24,6 @@ async function Tree ({storage, rpcController, blockController}) {
     const eventData = Event.encode(event)
 
     let hashName
-    let blockController
 
     if (!eventId) { // if we just get raw data
       hashName = event.eventHash // TODO: get hash name from that
@@ -35,7 +36,7 @@ async function Tree ({storage, rpcController, blockController}) {
       }
     }
 
-    const actorKey = getActorKey(actorId)
+    const actorKey = global.TOTALLY_NOT_A_HACK // getActorKey(actorId)
 
     // TODO: currently anyone can write anything
 
@@ -75,9 +76,12 @@ async function Tree ({storage, rpcController, blockController}) {
   async function verifyAction (actionId, action) {
     let hashName = multihash.decode(actionId).name
     let realHash = await multihashing(action, hashName)
+
     if (!realHash.equals(actionId)) {
       throw new Error('Real hash is not equal action id')
     }
+
+    return true
   }
 
   async function syncUpToAction (actionId) {
@@ -92,18 +96,29 @@ async function Tree ({storage, rpcController, blockController}) {
     const action = await blockController.fetch(BlockType.ACTION, actionId)
     if (!await verifyAction(actionId, action)) {
       log('chain#action=%s REJECT', actionHex)
+      await saveQueueRemove(actionHex)
+      throw new Error('Rejected ' + actionHex)
+    } else {
+      log('chain#action=%s ACCEPT', actionHex)
+      await storage.put(actionHex, action) // TODO: cleanup old blocks
+
+      const {payload, prev} = Action.decode(action)
+
+      await safePayloadProcess(actionId, payload)
+
+      if (prev) {
+        await saveQueueAdd(prev.toString('hex'))
+        syncUpToAction(prev)
+      }
+
+      await saveProcessed(actionHex)
+      await saveQueueRemove(actionHex)
     }
+  }
 
-    log('chain#action=%s ACCEPT', actionHex)
-    const {payload, prev} = Action.decode(action)
-
-    await safePayloadProcess(actionHex, payload)
-
-    // TODO: fix race rm queue and add queue
-    prev.map(syncUpToAction) // launch parallel sync (possibly add queue later)
-
-    await saveProcessed(actionHex)
-    await saveQueueRemove(actionHex)
+  const payloadQueue = Queue()
+  async function safePayloadProcess (actionId, payload) {
+    return payloadQueue(() => payloadProcess(actionId, payload))
   }
 
   async function saveChainState (type, val) {
@@ -112,18 +127,35 @@ async function Tree ({storage, rpcController, blockController}) {
   }
 
   async function saveQueueAdd (hex) {
-    queue.push(hex)
-    await storage.putJSON('_queue', queue)
+    if (queue.indexOf(hex) === -1) {
+      queue.push(hex)
+      await storage.putJSON('_queue', queue)
+    }
   }
 
   async function saveQueueRemove (hex) {
-    queue = queue.filter(h => h !== hex)
-    await storage.putJSON('_queue', queue)
+    if (queue.indexOf(hex) !== -1) {
+      queue = queue.filter(h => h !== hex)
+      await storage.putJSON('_queue', queue)
+    }
   }
 
   async function saveProcessed (hex) {
     processed[hex] = true
     await storage.putJSON('_processed', processed)
+  }
+
+  async function fetchLatestEvent () {
+    if (rpcController) {
+      const latest = await rpcController.blockRequest({type: BlockType.EVENT})
+      await verifyEvent(null, latest)
+    } else {
+      return true
+    }
+  }
+
+  if (rpcController) {
+    fetchLatestEvent()
   }
 
   return {

@@ -14,6 +14,7 @@ describe('eventTree', () => {
 
   before(async () => {
     actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
+    global.TOTALLY_NOT_A_HACK = actorId
   })
 
   it('can create an event log', async () => {

@@ -14,6 +14,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
     })
 
     const actionId = await multihashing(action, blockHash)
+    blockController.addUnprocessed(actionId.toString('hex'), action)
 
     const eventCounter = tree.actorState[actorB58] + 1
 
@@ -27,7 +28,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
     const event = SignedEvent.encode({
       actorId,
       event: eventData,
-      signature: await actorKey.privKey.sign(Event.encode(eventData))
+      signature: await actorKey.privKey.sign(Event.encode(Event.decode(Event.encode(eventData)))) // we have to do this twice to sort keys. yeah...
     })
 
     const eventId = await multihashing(event, blockHash)
