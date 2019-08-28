@@ -84,6 +84,7 @@ async function Tree ({storage, rpcController}) {
     return true
   }
 
+  const actionQueue = Queue()
   async function syncUpToAction (actionId) {
     let actionHex = actionId.toString('hex')
 
@@ -93,27 +94,29 @@ async function Tree ({storage, rpcController}) {
 
     await saveQueueAdd(actionHex)
 
-    const action = await blockController.fetch(BlockType.ACTION, actionId)
-    if (!await verifyAction(actionId, action)) {
-      log('chain#action=%s REJECT', actionHex)
-      await saveQueueRemove(actionHex)
-      throw new Error('Rejected ' + actionHex)
-    } else {
-      log('chain#action=%s ACCEPT', actionHex)
-      await storage.put(actionHex, action) // TODO: cleanup old blocks
+    return actionQueue(async () => {
+      const action = await blockController.fetch(BlockType.ACTION, actionId)
+      if (!await verifyAction(actionId, action)) {
+        log('chain#action=%s REJECT', actionHex)
+        await saveQueueRemove(actionHex)
+        throw new Error('Rejected ' + actionHex)
+      } else {
+        log('chain#action=%s ACCEPT', actionHex)
+        await storage.put(actionHex, action) // TODO: cleanup old blocks
 
-      const {payload, prev} = Action.decode(action)
+        const {payload, prev} = Action.decode(action)
 
-      await safePayloadProcess(actionId, payload)
+        await safePayloadProcess(actionId, payload)
 
-      if (prev) {
-        await saveQueueAdd(prev.toString('hex'))
-        syncUpToAction(prev)
+        if (prev) {
+          await saveQueueAdd(prev.toString('hex'))
+          syncUpToAction(prev)
+        }
+
+        await saveProcessed(actionHex)
+        await saveQueueRemove(actionHex)
       }
-
-      await saveProcessed(actionHex)
-      await saveQueueRemove(actionHex)
-    }
+    })
   }
 
   const payloadQueue = Queue()

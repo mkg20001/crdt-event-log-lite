@@ -38,4 +38,12 @@ describe('eventTree', () => {
   it('can read keys', async () => {
     assert(await tree.read.getKey('hello'))
   })
+
+  it('can delete keys', async () => {
+    await tree.write.delKey('hello')
+  })
+
+  it('can not read key anymore', async () => {
+    assert(!(await tree.read.getKey('hello')))
+  })
 })

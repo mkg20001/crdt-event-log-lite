@@ -18,6 +18,9 @@ module.exports = function singleQueue (id) {
       log('exec queue left=%o', items.length)
       await fnc()
       log('exec queue end')
+      exec()
+    } else {
+      executing = false
     }
   }
 
