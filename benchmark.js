@@ -25,34 +25,13 @@ suite.add('create chains/trees for test', async () => {
   })
 })
 
-const cases = [
-  ['hello', 1000]
-  // [100, 262144],
-  // [1000, 262144]
-  // [10000, 262144],
-  // [100000, 262144],
-  // [1000000, 262144]
-]
-cases.forEach(([key, count]) => {
-  suite.add(`write to key ${key} ${count} times`, async () => {
-    let tree = await controller.load(String(Math.random()))
+suite.add(`write to key 5 times`, async () => {
+  let tree = await controller.load(String(Math.random()))
+  const count = 5
 
-    for (var i = 0; i < count; i++) {
-      await tree.write.setKey(key, String(i))
-    }
-  })
-
-  /* suite.add(`send encrypted ${times} x ${size} bytes`, (deferred) => {
-    const p = pair()
-
-    const peerA = peers[0]
-    const peerB = peers[1]
-
-    const aToB = ifErr(secio.encrypt(peerA, new Connection(p[0]), peerB))
-    const bToA = ifErr(secio.encrypt(peerB, new Connection(p[1]), peerA))
-
-    sendData(aToB, bToA, { times: times, size: size }, deferred)
-  }, { defer: true }) */
+  for (var i = 0; i < count; i++) {
+    await tree.write.setKey('hello', String(i))
+  }
 })
 
 suite.on('cycle', (event) => {

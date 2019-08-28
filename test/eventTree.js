@@ -7,7 +7,14 @@ const assert = require('assert')
 
 const EventLog = require('..')
 
-describe('eventTree', () => {
+const sampleData = [
+  ['hello', true],
+  ['bye', false],
+  ['no', 0],
+  ['yes', 1]
+]
+
+describe('eventTree + flatDB, offline', () => {
   let actorId
   let controller
   let tree
@@ -45,5 +52,13 @@ describe('eventTree', () => {
 
   it('can not read key anymore', async () => {
     assert(!(await tree.read.getKey('hello')))
+  })
+
+  it('can batch change keys', async () => {
+    await Promise.all(sampleData.map(([key, value]) => tree.write.setKey(key, value)))
+  })
+
+  it('can batch delete keys', async () => {
+    await Promise.all(sampleData.map(([key]) => tree.write.delKey(key)))
   })
 })
