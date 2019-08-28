@@ -65,8 +65,12 @@ module.exports = async ({storage, treeController}) => {
     if (res) {
       return res
     } else {
-      // await treeController.blockUntilSynced()
-      throw new Error('Should fetch from tree here')
+      if (keyRevisions[key]) { // the key has likely been deleted
+        return null
+      } else {
+        // await treeController.blockUntilSynced()
+        throw new Error('Should fetch from tree here')
+      }
     }
   }
 
@@ -108,6 +112,7 @@ module.exports = async ({storage, treeController}) => {
   async function saveKeyRemove (key) {
     if (keys.indexOf(key) !== -1) {
       keys = keys.filter(k => k !== key)
+      delete cache[key]
       await storage.putJSON('_keys', keys)
       await storage.del('_val_' + key)
     }

@@ -109,8 +109,10 @@ async function Tree ({storage, rpcController}) {
         await safePayloadProcess(actionId, payload)
 
         if (prev) {
-          await saveQueueAdd(prev.toString('hex'))
-          syncUpToAction(prev)
+          let prevHex = prev.toString('hex')
+          if (!processed[prevHex]) {
+            syncUpToAction(prev)
+          }
         }
 
         await saveProcessed(actionHex)
