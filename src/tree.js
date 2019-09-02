@@ -10,7 +10,7 @@ const debug = require('debug')
 const log = debug('crdt-event-log-lite:tree')
 const Queue = require('./queue')
 
-async function Tree ({storage, rpcController}) {
+async function Tree ({storage, rpcController, ownerKey}) {
   let payloadProcess
   let blockController
 
@@ -36,11 +36,9 @@ async function Tree ({storage, rpcController}) {
       }
     }
 
-    const actorKey = global.TOTALLY_NOT_A_HACK // getActorKey(actorId)
-
     // TODO: currently anyone can write anything
 
-    const sigIsOk = await actorKey.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
+    const sigIsOk = await ownerKey.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
     if (!sigIsOk) {
       throw new Error('Signature is bad')
     }

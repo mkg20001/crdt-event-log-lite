@@ -1,5 +1,9 @@
 'use strict'
 
+const {GatheringID} = require('./proto')
+const Id = require('peer-id')
+const crypto = require('libp2p-crypto')
+
 const Tree = require('./tree')
 const RPCController = require('./rpcController')
 const BlockController = require('./blockController')
@@ -17,15 +21,21 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     rpcController = RPCController(swarm)
   }
 
-  async function loadChain (id) {
-    const storage = await storageController(id)
+  async function loadChain (fullID) {
+    const {pubKey, uuid} = GatheringID.decode(Buffer.from(fullID, 'hex'))
+    const ownerId = await Id.createFromPubKey(pubKey)
+
+    const storage = await storageController(fullID)
 
     const tree = await Tree({
-      storage
+      storage,
+      ownerKey: ownerId
     })
 
-    const blockController = await BlockController(id, {rpcController, storage, tree})
-    const treeController = await TreeController(id, {tree, actorKey: actor, blockHash, rpcController, blockController})
+    const isOwner = ownerId.toB58String() === actor.toB58String()
+
+    const blockController = await BlockController(fullID, {rpcController, storage, tree})
+    const treeController = await TreeController(fullID, {tree, actorKey: actor, ownerKey: ownerId, blockHash, rpcController, blockController})
 
     tree.attachBlockController(blockController)
     const structure = await type({storage, treeController})
@@ -33,12 +43,23 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     return {
       read: structure.user.public,
-      write: structure.user.private
+      write: isOwner ? structure.user.private : {}
     }
   }
 
+  async function generateId (idOrPubKey, uuid) {
+    const pubKey = idOrPubKey.pubKey ? idOrPubKey.pubKey : idOrPubKey.verify ? idOrPubKey : null
+
+    if (!pubKey) {
+      throw new Error('Not a valid public key!')
+    }
+
+    return GatheringID.encode({ pubKey: crypto.keys.marshalPublicKey(pubKey), uuid }).toString('hex')
+  }
+
   return {
-    load: loadChain
+    load: loadChain,
+    getId: generateId
   }
 }
 
@@ -50,5 +71,8 @@ module.exports = {
   },
   Type: {
     FlatObjectDB: require('./payloadLayer/flatObjectDB')
+  },
+  Collabrate: {
+
   }
 }

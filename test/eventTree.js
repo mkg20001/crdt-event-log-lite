@@ -18,10 +18,10 @@ describe('eventTree + flatDB, offline', () => {
   let actorId
   let controller
   let tree
+  let treeID
 
   before(async () => {
     actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
-    global.TOTALLY_NOT_A_HACK = actorId
   })
 
   it('can create an event log', async () => {
@@ -32,10 +32,11 @@ describe('eventTree + flatDB, offline', () => {
       type: EventLog.Type.FlatObjectDB
       // collabrationStructure: EventLog.Collabrate.BenevolentDictator
     })
+    treeID = await controller.getId(actorId, 'test')
   })
 
   it('can create a tree with an actor peer-id', async () => {
-    tree = await controller.load('test')
+    tree = await controller.load(treeID)
   })
 
   it('can change keys', async () => {

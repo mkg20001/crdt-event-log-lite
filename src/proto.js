@@ -20,6 +20,7 @@ const protons = require('protons')
 module.exports = protons(`message Action {
   bytes prev = 1;
   bytes payload = 2; // Payload data
+  bytes collabrationPayload = 3; // Payload data for identifiying the collabration structure and the collabration details
 }
 
 message Event {
@@ -48,4 +49,9 @@ message BlockRequest {
 message BlockResponse {
   bytes blockId = 1;
   bytes blockContent = 2;
+}
+
+message GatheringID {
+  bytes pubKey = 1;
+  string uuid = 2;
 }`)
