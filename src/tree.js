@@ -1,10 +1,11 @@
 'use strict'
 
-const {Event, Action, SignedEvent, BlockType} = require('./proto')
+const {Event, Action, SignedEvent, BlockType, PermissionType, CollabrationType} = require('./proto')
 
 const multihash = require('multihashes')
 const multihashing = require('multihashing-async')
 const Id = require('peer-id')
+const c = require('./utils').c
 
 const debug = require('debug')
 const log = debug('crdt-event-log-lite:tree')
@@ -20,7 +21,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
   const processed = await storage.getJSON('_processed', {})
 
   async function verifyEvent (eventId, data) {
-    const {actorId, event, signature} = SignedEvent.decode(data)
+    const {compressedActorKey, event, signature} = SignedEvent.decode(data)
     const eventData = Event.encode(event)
 
     let hashName
@@ -38,8 +39,8 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
 
     // TODO: currently anyone can write anything
 
-    const actorPeerId = await getPeerId(actorId)
-    const sigIsOk = await actorPeerId.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
+    const actorId = await Id.createFromPubKey(await c.uncompressGZIP(compressedActorKey))
+    const sigIsOk = await actorId.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
     if (!sigIsOk) {
       throw new Error('Signature is bad')
     }
@@ -48,7 +49,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
   }
 
   async function processEvent (eventId, data, actorId, {eventCounter, prev, actionId}) {
-    const actorB58 = new Id(actorId).toB58String()
+    const actorB58 = actorId.toB58String()
 
     let eventHex = eventId.toString('hex')
     if (eventCounter <= actorState[actorB58]) {
@@ -62,7 +63,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
     await storage.put(eventHex, data) // TODO: cleanup old blocks
     await saveChainState('event.' + actorB58, eventHex)
 
-    await processLatestAction(eventId, actionId, actorId)
+    await processLatestAction(eventId, actionId, actorB58)
   }
 
   async function processLatestAction (eventId, actionId, actorB58) {
@@ -82,7 +83,9 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
       throw new Error('Real hash is not equal action id')
     }
 
-    const db = dbs[action.dbId]
+    const {dbId, payload, prev} = Action.decode(action)
+
+    const db = dbs[dbId]
 
     if (!db) {
       throw new Error('Referenced db not found in chain')
@@ -125,7 +128,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
       default: throw new TypeError('No collab type ' + db.collabrate)
     }
 
-    return true
+    return {dbId, payload, prev}
   }
 
   const actionQueue = Queue()
@@ -140,7 +143,9 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
 
     return actionQueue(async () => {
       const action = await blockController.fetch(BlockType.ACTION, actionId)
-      if (!await verifyAction(actionId, action, actorB58)) {
+      let actionDecoded
+
+      if (!(actionDecoded = (await verifyAction(actionId, action, actorB58)))) {
         log('chain#action=%s REJECT %o', actionHex)
         await saveQueueRemove(actionHex)
         throw new Error('Rejected ' + actionHex)
@@ -148,9 +153,9 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
         log('chain#action=%s ACCEPT', actionHex)
         await storage.put(actionHex, action) // TODO: cleanup old blocks
 
-        const {payload, prev} = Action.decode(action)
+        const {prev, payload, dbId} = actionDecoded
 
-        await safePayloadProcess(actionId, actorB58, action.dbId, payload)
+        await safePayloadProcess(actionId, actorB58, dbId, payload)
 
         if (prev) {
           let prevHex = prev.toString('hex')
@@ -166,13 +171,18 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
   }
 
   const payloadQueue = Queue()
-  async function safePayloadProcess (actionId, payload) {
-    return payloadQueue(() => payloadProcess(actionId, payload))
+  async function safePayloadProcess (actionId, actorB58, dbId, payload) {
+    return payloadQueue(() => payloadProcess(actionId, actorB58, dbId, payload))
   }
 
   async function saveChainState (type, val) {
     chainState[type] = val
     await storage.putJSON('_chainState', chainState)
+  }
+
+  async function saveActorState (type, val) {
+    actorState[type] = val
+    await storage.putJSON('_actorState', actorState)
   }
 
   async function saveQueueAdd (hex) {

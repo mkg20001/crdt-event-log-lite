@@ -65,7 +65,7 @@ enum DatabaseType {
 /* Data */
 
 message SignedEvent {
-  bytes actorId = 1;
+  bytes compressedActorKey = 1;
   Event event = 2;
   bytes signature = 3;
 }

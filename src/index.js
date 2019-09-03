@@ -52,17 +52,18 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     // TODO: validate config.ownerId
 
     const chainId = await multihash(configEncoded, config.preferredHash)
-    const treeStorage = await storageController(chainId)
-
-    const tree = await Tree({
-      storage: treeStorage,
-      ownerKey: ownerId
-    })
 
     const isOwner = ownerId.toB58String() === actor.toB58String()
 
     const treeProcessor = await TreeProcessor({})
     const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, isOwner, config.keys)
+
+    const treeStorage = await storageController(chainId)
+    const tree = await Tree({
+      storage: treeStorage,
+      ownerKey: ownerId,
+      dbs
+    })
 
     const blockController = await BlockController(fullID, {rpcController, storage: treeStorage, tree})
     const treeController = await TreeController(fullID, {tree, actorKey: actor, ownerKey: ownerId, blockHash, rpcController, blockController})

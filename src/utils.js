@@ -6,7 +6,18 @@ const databases = {
   [DatabaseType.FLATDB]: require('./payloadLayer/flatObjectDB')
 }
 
+const prom = (f) => new Promise((resolve, reject) => f((err, res) => err ? reject(err) : resolve(res)))
+const zlib = require('zlib')
+
 module.exports = {
+  c: { // TODO: study which is best, use multicodec once added in table
+    compressGZIP: async (buffer) => {
+      return prom(cb => zlib.gzip(buffer, cb))
+    },
+    uncompressGZIP: async (buffer) => {
+      return prom(cb => zlib.gunzip(buffer, cb))
+    }
+  },
   makeDatabases: async (chainId, storageController, treeProcessor, isOwner, dbConfig) => {
     const dbs = await Promise.all(dbConfig.map(async (db) => {
       const fullId = chainId + '@' + db.id
@@ -42,7 +53,7 @@ module.exports = {
 
           db.process = async (actorB58, payload) => {
             const _db = await db.db()
-            return _db.onPayload(payload)
+            return _db.onPayload(actorB58, payload)
           }
 
           db.interface = async () => {
@@ -66,7 +77,7 @@ module.exports = {
 
           db.process = async (actorB58, payload) => {
             const _db = await db.db(actorB58)
-            return _db.onPayload(payload)
+            return _db.onPayload(actorB58, payload)
           }
 
           db.interface = async (actorB58) => {

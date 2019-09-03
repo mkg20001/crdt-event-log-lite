@@ -4,11 +4,14 @@ const {Action, Event, SignedEvent} = require('./proto')
 const multihashing = require('multihashing-async')
 const Queue = require('./queue')
 
+const crypto = require('libp2p-crypto')
+const c = require('./utils').c
+
 async function TreeController (id, {tree, actorKey, blockHash, rpcController, blockController}) {
   const appendQueue = Queue()
 
-  const actorId = actorKey._id
   const actorB58 = actorKey.toB58String()
+  const compressedActorKey = await c.compressGZIP(await crypto.keys.marshalPublicKey(actorKey.pubKey))
 
   async function append (dbId, payload) {
     return appendQueue(async () => {
@@ -31,7 +34,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
       }
 
       const event = SignedEvent.encode({
-        actorId,
+        compressedActorKey,
         event: eventData,
         signature: await actorKey.privKey.sign(Event.encode(Event.decode(Event.encode(eventData)))) // we have to do this twice to sort keys. yeah...
       })

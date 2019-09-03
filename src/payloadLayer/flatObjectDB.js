@@ -74,7 +74,8 @@ module.exports = async ({storage, tree}) => {
     }
   }
 
-  async function payloadProcess (id, payload) { // processor gets called for each block one by one
+  async function onPayload (actor, payload) { // processor gets called for each block one by one
+    console.log(payload)
     const {payloadType, key, changeId, value} = Payload.decode(payload)
     if (keyRevisions[key] > changeId) { // if we have a newer change id
       log('flatDb#payload=%s~%s IGNORE [changeId]', key, changeId)
@@ -134,6 +135,6 @@ module.exports = async ({storage, tree}) => {
         delKey
       }
     },
-    payloadProcess
+    onPayload
   }
 }
