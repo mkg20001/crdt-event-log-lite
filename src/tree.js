@@ -10,7 +10,7 @@ const debug = require('debug')
 const log = debug('crdt-event-log-lite:tree')
 const Queue = require('./queue')
 
-async function Tree ({storage, rpcController, ownerKey}) {
+async function Tree ({storage, rpcController, ownerKey, dbs}) {
   let payloadProcess
   let blockController
 
@@ -38,7 +38,8 @@ async function Tree ({storage, rpcController, ownerKey}) {
 
     // TODO: currently anyone can write anything
 
-    const sigIsOk = await ownerKey.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
+    const actorPeerId = await getPeerId(actorId)
+    const sigIsOk = await actorPeerId.pubKey.verify(eventData, signature) // TODO: dynamically aquire key
     if (!sigIsOk) {
       throw new Error('Signature is bad')
     }
@@ -48,30 +49,32 @@ async function Tree ({storage, rpcController, ownerKey}) {
 
   async function processEvent (eventId, data, actorId, {eventCounter, prev, actionId}) {
     const actorB58 = new Id(actorId).toB58String()
+
     let eventHex = eventId.toString('hex')
     if (eventCounter <= actorState[actorB58]) {
       log('chain#event=%s IGNORE [counter] theirs=%o, ours=%o', eventHex, eventCounter, actorState[actorB58])
       return
     }
+    await saveActorState(actorB58, eventCounter)
 
     log('chain#event=%s ACCEPT', eventHex)
-    log('chain#op UPDATE EVENT %s', eventHex)
+    log('chain#op UPDATE EVENT %s~%s', actorB58, eventHex)
     await storage.put(eventHex, data) // TODO: cleanup old blocks
-    await saveChainState('event', eventHex)
+    await saveChainState('event.' + actorB58, eventHex)
 
-    await processLatestAction(eventId, actionId)
+    await processLatestAction(eventId, actionId, actorId)
   }
 
-  async function processLatestAction (eventId, actionId) {
+  async function processLatestAction (eventId, actionId, actorB58) {
     let eventHex = eventId.toString('hex')
     let actionHex = actionId.toString('hex')
-    log('chain#op UPDATE ACTION %s{%s}', actionHex, eventHex)
+    log('chain#op UPDATE ACTION %s{%s}~%s', actionHex, eventHex, actorB58)
 
-    await saveChainState('action', actionHex)
-    await syncUpToAction(actionId)
+    await saveChainState('action.' + actorB58, actionHex)
+    await syncUpToAction(actionId, actorB58)
   }
 
-  async function verifyAction (actionId, action) {
+  async function verifyAction (actionId, action, actorB58) {
     let hashName = multihash.decode(actionId).name
     let realHash = await multihashing(action, hashName)
 
@@ -79,23 +82,66 @@ async function Tree ({storage, rpcController, ownerKey}) {
       throw new Error('Real hash is not equal action id')
     }
 
+    const db = dbs[action.dbId]
+
+    if (!db) {
+      throw new Error('Referenced db not found in chain')
+    }
+
+    // check permissions
+
+    switch (db.permission) {
+      case PermissionType.OWNER: {
+        if (ownerKey.toB58String() !== actorB58) {
+          throw new Error('Permission type owner, but actor is not owner')
+        }
+        break
+      }
+      case PermissionType.ANYONE: {
+        break
+      }
+      case PermissionType.PRESPECIFIED: {
+        throw new Error('WIP')
+      }
+
+      default: throw new TypeError('No permission type ' + db.permission)
+    }
+
+    // verify collabrate
+
+    switch (db.collabrate) {
+      case CollabrationType.NONE: {
+        if (db.permission !== PermissionType.OWNER) {
+          throw new Error('When collabration disabled, only owner can write')
+        }
+        break
+      }
+      case CollabrationType.SIMPLE: {
+        break
+      }
+      case CollabrationType.MULTI: {
+        break
+      }
+      default: throw new TypeError('No collab type ' + db.collabrate)
+    }
+
     return true
   }
 
   const actionQueue = Queue()
-  async function syncUpToAction (actionId) {
+  async function syncUpToAction (actionId, actorB58) {
     let actionHex = actionId.toString('hex')
 
     if (processed[actionHex]) {
       return true
     }
 
-    await saveQueueAdd(actionHex)
+    await saveQueueAdd(actionHex, actorB58)
 
     return actionQueue(async () => {
       const action = await blockController.fetch(BlockType.ACTION, actionId)
-      if (!await verifyAction(actionId, action)) {
-        log('chain#action=%s REJECT', actionHex)
+      if (!await verifyAction(actionId, action, actorB58)) {
+        log('chain#action=%s REJECT %o', actionHex)
         await saveQueueRemove(actionHex)
         throw new Error('Rejected ' + actionHex)
       } else {
@@ -104,7 +150,7 @@ async function Tree ({storage, rpcController, ownerKey}) {
 
         const {payload, prev} = Action.decode(action)
 
-        await safePayloadProcess(actionId, payload)
+        await safePayloadProcess(actionId, actorB58, action.dbId, dbs[action.dbId], payload)
 
         if (prev) {
           let prevHex = prev.toString('hex')

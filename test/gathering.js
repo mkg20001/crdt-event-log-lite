@@ -99,36 +99,49 @@ describe('eventTree + flatDB, offline', () => {
 
     controller = await EventLog.create({
       actor: actorId,
-      storage: await EventLog.Storage.RAM(),
+      storage: await EventLog.Storage.RAM()
       // swarm: null // means we're offline
-      type: EventLog.Type.FlatObjectDB,
-      collabrationStructure: EventLog.Collabrate.SimpleActorID
     })
 
     controllerMember = await EventLog.create({
       actor: memberId,
-      storage: await EventLog.Storage.RAM(),
+      storage: await EventLog.Storage.RAM()
       // swarm: null // means we're offline
-      type: EventLog.Type.FlatObjectDB,
-      collabrationStructure: EventLog.Collabrate.SimpleActorID
     })
   })
 
   it('create gathering', async () => {
     const gatheringUUID = String(Math.random())
-    gatheringID = controller.getId(actorId, gatheringUUID)
+    gatheringID = controller.getId(actorId, {
+      uuid: gatheringUUID,
+      keys: [
+        {
+          collabrate: EventLog.Collabrate.OWNER,
+          permission: EventLog.Permission.OWNER,
+          database: EventLog.Database.FLATDB,
+          id: 'gathering'
+        },
+        {
+          collabrate: EventLog.Collabrate.SIMPLE,
+          permission: EventLog.Permission.ANY,
+          database: EventLog.Database.FLATDB,
+          id: 'members'
+        }
+      ]
+    })
 
     tree = await controller.load(gatheringID)
+
     await tree.write.setKey('gathering', {
       end: '2019-08-13T09:00:00',
       place: 'test',
       name: 'Demo'
     })
 
-    // await tree.collabrate.write.enableOn('members')
+    // await tree.runManualGC()
   })
 
   it('add member', async () => {
-
+    treeMember = await controllerMember.load(gatheringID)
   })
 })

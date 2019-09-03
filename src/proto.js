@@ -17,24 +17,77 @@ const protons = require('protons')
   /
 } */
 
-module.exports = protons(`message Action {
-  bytes prev = 1;
-  bytes payload = 2; // Payload data
-  bytes collabrationPayload = 3; // Payload data for identifiying the collabration structure and the collabration details
+module.exports = protons(`
+
+/* Chain Config */
+
+message SignedChainConfig {
+  bytes pubKey = 1;
+  ChainConfig config = 2;
+  bytes signature = 3;
 }
 
-message Event {
-  int64 eventCounter = 1;
-  repeated bytes prev = 2;
-  bytes actionId = 3;
-  int64 eventHash = 4;
+message ChainConfig {
+  int64 preferredHash = 1;
+  repeated SubKey keys = 2;
+  bytes ownerId = 3;
 }
+
+message SubKey {
+  string id = 1;
+
+  CollabrationType collabrate = 10;
+
+  PermissionType permission = 20;
+
+  DatabaseType database = 30;
+
+  // space of 10 entries for config entries
+
+}
+
+enum CollabrationType {
+  NONE = 1; // all keys controlled by same actor
+  SIMPLE = 2; // subKey: actorId, value: $controlledByActorId
+  MULTI = 3; // subKey: any, subSubKey: actorKey, valueSubKey: $controlledByActorId
+}
+
+enum PermissionType {
+  OWNER = 1;
+  ANYONE = 2;
+  PRESPECIFIED = 3;
+}
+
+enum DatabaseType {
+  FLATDB = 1;
+}
+
+/* Data */
 
 message SignedEvent {
   bytes actorId = 1;
   Event event = 2;
   bytes signature = 3;
 }
+
+message Event {
+  int64 eventCounter = 1;
+
+  repeated bytes prev = 2;
+
+  bytes actionId = 3;
+  int64 eventHashType = 4;
+}
+
+message Action {
+  bytes prev = 1;
+
+  string dbId = 2;
+
+  bytes payload = 3;
+}
+
+/* RPC */
 
 enum BlockType {
   EVENT  = 1;
@@ -51,7 +104,4 @@ message BlockResponse {
   bytes blockContent = 2;
 }
 
-message GatheringID {
-  bytes pubKey = 1;
-  string uuid = 2;
-}`)
+`)
