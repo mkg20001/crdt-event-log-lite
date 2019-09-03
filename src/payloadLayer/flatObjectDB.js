@@ -19,7 +19,7 @@ const {Payload, PayloadType} = protons(`
   }
 `)
 
-module.exports = async ({storage, treeController}) => {
+module.exports = async ({storage, tree}) => {
   let keys = await storage.getJSON('_keys', [])
   const keyRevisions = await storage.getJSON('_keyRevisions', {})
 
@@ -38,7 +38,7 @@ module.exports = async ({storage, treeController}) => {
   async function setKey (key, val) {
     let rev = (keyRevisions[key] || 0) + 1
 
-    await treeController.append(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+    await tree.onAppend(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
       payloadType: PayloadType.PUT,
       key,
       changeId: rev,
@@ -53,7 +53,7 @@ module.exports = async ({storage, treeController}) => {
 
     let rev = keyRevisions[key] + 1
 
-    await treeController.append(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
+    await tree.onAppend(Payload.encode({ // this will create the block and run a sync. (TODO: maybe run sync before for multi-device access?)
       payloadType: PayloadType.DELETE,
       key,
       changeId: rev
@@ -68,7 +68,7 @@ module.exports = async ({storage, treeController}) => {
       if (keyRevisions[key]) { // the key has likely been deleted
         return null
       } else {
-        // await treeController.blockUntilSynced()
+        // await tree.blockUntilSynced()
         throw new Error('Should fetch from tree here')
       }
     }

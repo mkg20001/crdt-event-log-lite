@@ -150,7 +150,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
 
         const {payload, prev} = Action.decode(action)
 
-        await safePayloadProcess(actionId, actorB58, action.dbId, dbs[action.dbId], payload)
+        await safePayloadProcess(actionId, actorB58, action.dbId, payload)
 
         if (prev) {
           let prevHex = prev.toString('hex')

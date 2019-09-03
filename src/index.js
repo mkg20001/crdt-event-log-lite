@@ -5,9 +5,12 @@ const Id = require('peer-id')
 const crypto = require('libp2p-crypto')
 
 const Tree = require('./tree')
+const TreeProcessor = require('./treeProcessor')
 const RPCController = require('./rpcController')
 const BlockController = require('./blockController')
 const TreeController = require('./treeController')
+
+const utils = require('./utils')
 
 const Joi = require('@hapi/joi')
 
@@ -36,7 +39,8 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
   async function loadChain (fullID) {
     const {pubKey, config, signature} = SignedChainConfig.decode(Buffer.from(fullID, 'hex'))
     const ownerId = await Id.createFromPubKey(pubKey)
-    const sigIsOk = await ownerId.pubKey.verify(signature, ChainConfig.encode(config))
+    const configEncoded = ChainConfig.encode(config)
+    const sigIsOk = await ownerId.pubKey.verify(signature)
 
     if (!sigIsOk) {
       throw new Error('Invalid chain config signature')
@@ -44,26 +48,30 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     // TODO: validate config.ownerId
 
-    const storage = await storageController(fullID)
+    const chainId = await multihash(config.preferredHash, configEncoded)
+    const treeStorage = await storageController(chainId)
 
     const tree = await Tree({
-      storage,
+      storage: treeStorage,
       ownerKey: ownerId
     })
 
     const isOwner = ownerId.toB58String() === actor.toB58String()
 
-    const blockController = await BlockController(fullID, {rpcController, storage, tree})
+    const treeProcessor = await TreeProcessor({})
+    const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, isOwner, config.subKeys)
+
+    const blockController = await BlockController(fullID, {rpcController, storage: treeStorage, tree})
     const treeController = await TreeController(fullID, {tree, actorKey: actor, ownerKey: ownerId, blockHash, rpcController, blockController})
 
     tree.attachBlockController(blockController)
-    const structure = await type({storage, treeController})
-    tree.attach(structure.payloadProcess)
 
-    return {
+    tree.attach(treeProcessor.onPayload)
+
+    /* return {
       read: structure.user.public,
       write: isOwner ? structure.user.private : {}
-    }
+    } */
   }
 
   async function generateId (id, config) {
