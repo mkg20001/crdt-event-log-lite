@@ -18,7 +18,7 @@ module.exports = {
       return prom(cb => zlib.gunzip(buffer, cb))
     }
   },
-  makeDatabases: async (chainId, storageController, treeProcessor, isOwner, dbConfig) => {
+  makeDatabases: async (chainId, storageController, treeProcessor, ownerB58, isOwner, dbConfig) => {
     const dbs = await Promise.all(dbConfig.map(async (db) => {
       const fullId = chainId + '@' + db.id
       const type = databases[db.database]
@@ -69,6 +69,10 @@ module.exports = {
           let cache = {}
 
           db.db = async (actorB58) => {
+            if (!actorB58) {
+              throw new Error('Need b58 id! (dbType=collab.simple)')
+            }
+
             if (cache[actorB58]) return cache[actorB58]
 
             const storage = await storageController(fullId + '~' + actorB58)

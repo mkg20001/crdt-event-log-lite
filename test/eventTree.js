@@ -14,12 +14,37 @@ const sampleData = [
   ['yes', 1]
 ]
 
-describe('eventTree + flatDB + collab/perm simple, offline', () => {
+const testFlat = (t) => {
+  it('can change keys', async () => {
+    await t.testDB.write.setKey('hello', true)
+  })
+
+  it('can read keys', async () => {
+    assert(await t.testDB.read.getKey('hello'))
+  })
+
+  it('can delete keys', async () => {
+    await t.testDB.write.delKey('hello')
+  })
+
+  it('can not read key anymore', async () => {
+    assert(!(await t.testDB.read.getKey('hello')))
+  })
+
+  it('can batch change keys', async () => {
+    await Promise.all(sampleData.map(([key, value]) => t.testDB.write.setKey(key, value)))
+  })
+
+  it('can batch delete keys', async () => {
+    await Promise.all(sampleData.map(([key]) => t.testDB.write.delKey(key)))
+  })
+}
+
+describe('eventTree + flatDB, offline', () => {
   let actorId
   let controller
   let tree
   let treeID
-  let testDB
 
   before(async () => {
     actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
@@ -38,6 +63,12 @@ describe('eventTree + flatDB + collab/perm simple, offline', () => {
           permission: EventLog.Permission.OWNER,
           database: EventLog.Database.FLATDB,
           id: 'testDB'
+        },
+        {
+          collabrate: EventLog.Collabrate.SIMPLE,
+          permission: EventLog.Permission.ANYONE,
+          database: EventLog.Database.FLATDB,
+          id: 'testCollab'
         }
       ]
     })
@@ -45,30 +76,25 @@ describe('eventTree + flatDB + collab/perm simple, offline', () => {
 
   it('can create a tree with an actor peer-id', async () => {
     tree = await controller.load(treeID)
-    testDB = await tree.testDB()
   })
 
-  it('can change keys', async () => {
-    await testDB.write.setKey('hello', true)
+  describe('perm=owner, collab=none', () => {
+    let t = {}
+
+    before(async () => {
+      t.testDB = await tree.testDB()
+    })
+
+    testFlat(t)
   })
 
-  it('can read keys', async () => {
-    assert(await testDB.read.getKey('hello'))
-  })
+  describe('perm=any, collab=simple', () => {
+    let t = {}
 
-  it('can delete keys', async () => {
-    await testDB.write.delKey('hello')
-  })
+    before(async () => {
+      t.testDB = await tree.testCollab(actorId.toB58String())
+    })
 
-  it('can not read key anymore', async () => {
-    assert(!(await testDB.read.getKey('hello')))
-  })
-
-  it('can batch change keys', async () => {
-    await Promise.all(sampleData.map(([key, value]) => testDB.write.setKey(key, value)))
-  })
-
-  it('can batch delete keys', async () => {
-    await Promise.all(sampleData.map(([key]) => testDB.write.delKey(key)))
+    testFlat(t)
   })
 })

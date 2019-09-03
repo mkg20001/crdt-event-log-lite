@@ -53,10 +53,11 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     const chainId = await multihash(configEncoded, config.preferredHash)
 
-    const isOwner = ownerId.toB58String() === actor.toB58String()
+    const ownerB58 = ownerId.toB58String()
+    const isOwner = ownerB58 === actor.toB58String()
 
     const treeProcessor = await TreeProcessor({})
-    const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, isOwner, config.keys)
+    const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, ownerB58, isOwner, config.keys)
 
     const treeStorage = await storageController(chainId)
     const tree = await Tree({
