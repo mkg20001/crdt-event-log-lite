@@ -14,6 +14,8 @@ const utils = require('./utils')
 
 const Joi = require('@hapi/joi')
 
+const multihash = require('multihashing-async')
+
 function EventLog ({actor, storage: storageController, type, swarm, blockHash}) {
   const isOnline = Boolean(swarm)
 
@@ -24,7 +26,8 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
   const schemaSubKey = Joi.object().keys({
     collabrate: Joi.number().required(),
     permission: Joi.number().required(),
-    database: Joi.number().required()
+    database: Joi.number().required(),
+    id: Joi.string().required()
   })
   const schemaChainConfig = Joi.object().keys({
     preferredHash: Joi.number().default(blockHash),
@@ -40,7 +43,7 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     const {pubKey, config, signature} = SignedChainConfig.decode(Buffer.from(fullID, 'hex'))
     const ownerId = await Id.createFromPubKey(pubKey)
     const configEncoded = ChainConfig.encode(config)
-    const sigIsOk = await ownerId.pubKey.verify(signature)
+    const sigIsOk = await ownerId.pubKey.verify(configEncoded, signature)
 
     if (!sigIsOk) {
       throw new Error('Invalid chain config signature')
@@ -48,7 +51,7 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     // TODO: validate config.ownerId
 
-    const chainId = await multihash(config.preferredHash, configEncoded)
+    const chainId = await multihash(configEncoded, config.preferredHash)
     const treeStorage = await storageController(chainId)
 
     const tree = await Tree({
@@ -59,7 +62,7 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     const isOwner = ownerId.toB58String() === actor.toB58String()
 
     const treeProcessor = await TreeProcessor({})
-    const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, isOwner, config.subKeys)
+    const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, isOwner, config.keys)
 
     const blockController = await BlockController(fullID, {rpcController, storage: treeStorage, tree})
     const treeController = await TreeController(fullID, {tree, actorKey: actor, ownerKey: ownerId, blockHash, rpcController, blockController})
@@ -80,6 +83,10 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     }
 
     config = Joi.validate(config, schemaChainConfig)
+    if (config.error) {
+      throw config.error
+    }
+    config = config.value
 
     const pubKey = crypto.keys.marshalPublicKey(id.pubKey)
 
@@ -89,7 +96,7 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     const signature = await id.privKey.sign(ChainConfig.encode(config))
 
-    return SignedChainConfig.encode({ pubKey, config, signature })
+    return SignedChainConfig.encode({ pubKey, config, signature }).toString('hex')
   }
 
   return {

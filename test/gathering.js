@@ -111,19 +111,17 @@ describe('eventTree + flatDB, offline', () => {
   })
 
   it('create gathering', async () => {
-    const gatheringUUID = String(Math.random())
-    gatheringID = controller.getId(actorId, {
-      uuid: gatheringUUID,
+    gatheringID = await controller.getId(actorId, {
       keys: [
         {
-          collabrate: EventLog.Collabrate.OWNER,
+          collabrate: EventLog.Collabrate.NONE,
           permission: EventLog.Permission.OWNER,
           database: EventLog.Database.FLATDB,
           id: 'gathering'
         },
         {
           collabrate: EventLog.Collabrate.SIMPLE,
-          permission: EventLog.Permission.ANY,
+          permission: EventLog.Permission.ANYONE,
           database: EventLog.Database.FLATDB,
           id: 'members'
         }

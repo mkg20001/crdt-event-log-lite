@@ -37,6 +37,8 @@ module.exports = {
         }
         default: throw new TypeError('No collabration type ' + db.collabrate)
       }
+
+      return db
     }))
 
     return dbs.reduce((a, b) => {

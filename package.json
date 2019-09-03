@@ -16,6 +16,7 @@
   "author": "Maciej Krüger <mkg20001@gmail.com>",
   "license": "MPL-2.0",
   "dependencies": {
+    "@hapi/joi": "^15.1.1",
     "libp2p-crypto": "^0.17.0",
     "multihashing-async": "^0.7.0",
     "peer-id": "^0.13.2",
