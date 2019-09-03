@@ -14,11 +14,12 @@ const sampleData = [
   ['yes', 1]
 ]
 
-describe('eventTree + flatDB, offline', () => {
+describe('eventTree + flatDB + collab/perm simple, offline', () => {
   let actorId
   let controller
   let tree
   let treeID
+  let testDB
 
   before(async () => {
     actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
@@ -27,39 +28,47 @@ describe('eventTree + flatDB, offline', () => {
   it('can create an event log', async () => {
     controller = await EventLog.create({
       actor: actorId,
-      storage: await EventLog.Storage.RAM(),
+      storage: await EventLog.Storage.RAM()
       // swarm: null // means we're offline
-      type: EventLog.Type.FlatObjectDB
-      // collabrationStructure: EventLog.Collabrate.BenevolentDictator
     })
-    treeID = await controller.getId(actorId, 'test')
+    treeID = await controller.getId(actorId, {
+      keys: [
+        {
+          collabrate: EventLog.Collabrate.NONE,
+          permission: EventLog.Permission.OWNER,
+          database: EventLog.Database.FLATDB,
+          id: 'testDB'
+        }
+      ]
+    })
   })
 
   it('can create a tree with an actor peer-id', async () => {
     tree = await controller.load(treeID)
+    testDB = await tree.testDB()
   })
 
   it('can change keys', async () => {
-    await tree.write.setKey('hello', true)
+    await testDB.write.setKey('hello', true)
   })
 
   it('can read keys', async () => {
-    assert(await tree.read.getKey('hello'))
+    assert(await testDB.read.getKey('hello'))
   })
 
   it('can delete keys', async () => {
-    await tree.write.delKey('hello')
+    await testDB.write.delKey('hello')
   })
 
   it('can not read key anymore', async () => {
-    assert(!(await tree.read.getKey('hello')))
+    assert(!(await testDB.read.getKey('hello')))
   })
 
   it('can batch change keys', async () => {
-    await Promise.all(sampleData.map(([key, value]) => tree.write.setKey(key, value)))
+    await Promise.all(sampleData.map(([key, value]) => testDB.write.setKey(key, value)))
   })
 
   it('can batch delete keys', async () => {
-    await Promise.all(sampleData.map(([key]) => tree.write.delKey(key)))
+    await Promise.all(sampleData.map(([key]) => testDB.write.delKey(key)))
   })
 })

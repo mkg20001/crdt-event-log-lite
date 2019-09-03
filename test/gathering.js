@@ -84,8 +84,6 @@ const EventLog = require('..')
 }
 */
 
-global.DAT_HACK = global.DAT_HACK || {}
-
 describe('gathering tests', () => {
   let actorId
   let memberId
