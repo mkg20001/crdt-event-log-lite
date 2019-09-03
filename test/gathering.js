@@ -130,7 +130,9 @@ describe('eventTree + flatDB, offline', () => {
 
     tree = await controller.load(gatheringID)
 
-    await tree.write.setKey('gathering', {
+    const gathering = await tree.gathering()
+
+    gathering.write.setKey('details', {
       end: '2019-08-13T09:00:00',
       place: 'test',
       name: 'Demo'

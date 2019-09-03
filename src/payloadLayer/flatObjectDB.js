@@ -125,11 +125,11 @@ module.exports = async ({storage, tree}) => {
   }
 
   return {
-    user: {
-      public: {
+    public: {
+      read: {
         getKey
       },
-      private: {
+      write: {
         setKey,
         delKey
       }

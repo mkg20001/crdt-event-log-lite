@@ -6,13 +6,15 @@ const Queue = require('./queue')
 
 async function TreeController (id, {tree, actorKey, blockHash, rpcController, blockController}) {
   const appendQueue = Queue()
-  async function append (payload) {
-    return appendQueue(async () => {
-      const actorId = actorKey._id
-      const actorB58 = actorKey.toB58String()
 
+  const actorId = actorKey._id
+  const actorB58 = actorKey.toB58String()
+
+  async function append (dbId, payload) {
+    return appendQueue(async () => {
       const action = Action.encode({
-        prev: tree.chainState.action ? Buffer.from(tree.chainState.action, 'hex') : null,
+        prev: tree.chainState[`action.${actorB58}`] ? Buffer.from(tree.chainState[`action.${actorB58}`], 'hex') : null,
+        dbId,
         payload
       })
 
@@ -22,7 +24,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
       const eventCounter = tree.actorState[actorB58] + 1
 
       const eventData = {
-        prev: tree.chainState.event ? [Buffer.from(tree.chainState.event, 'hex')] : [],
+        prev: tree.chainState[`event.${actorB58}`] ? [Buffer.from(tree.chainState[`event.${actorB58}`], 'hex')] : [],
         eventCounter,
         actionId,
         eventHash: blockHash

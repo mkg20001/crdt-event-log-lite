@@ -68,13 +68,16 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     const treeController = await TreeController(fullID, {tree, actorKey: actor, ownerKey: ownerId, blockHash, rpcController, blockController})
 
     tree.attachBlockController(blockController)
-
     tree.attach(treeProcessor.onPayload)
+    treeProcessor.onController(treeController)
 
-    /* return {
-      read: structure.user.public,
-      write: isOwner ? structure.user.private : {}
-    } */
+    return config.keys.reduce((out, db) => {
+      const _db = dbs[db.id]
+
+      out[db.id] = _db.interface
+
+      return out
+    }, {})
   }
 
   async function generateId (id, config) {
