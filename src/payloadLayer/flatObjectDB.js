@@ -24,6 +24,15 @@ module.exports = async ({storage, tree}) => {
   const keyRevisions = await storage.getJSON('_keyRevisions', {})
 
   const cache = {}
+  const subscriptions = {}
+
+  function subscribeKey (key, fnc) { // TODO: unsubscribe
+    if (!Array.isArray(subscriptions[key])) {
+      subscriptions[key] = []
+    }
+
+    subscriptions[key].push(fnc)
+  }
 
   async function getKey (key) {
     if (cache[key]) {
@@ -99,6 +108,11 @@ module.exports = async ({storage, tree}) => {
 
   async function processValueChange (key, val) {
     cache[key] = val
+    if (Array.isArray(subscriptions[key])) {
+      subscriptions[key].forEach(subscription => {
+        subscription(key, val)
+      })
+    }
     await storage.putJSON('_val_' + key, val)
   }
 
@@ -127,7 +141,8 @@ module.exports = async ({storage, tree}) => {
   return {
     public: {
       read: {
-        getKey
+        getKey,
+        subscribeKey
       },
       write: {
         setKey,

@@ -38,6 +38,18 @@ const testFlat = (t) => {
   it('can batch delete keys', async () => {
     await Promise.all(sampleData.map(([key]) => t.testDB.write.delKey(key)))
   })
+
+  it('can subscribe to key changes', async () => {
+    const change = new Promise((resolve, reject) => {
+      t.testDB.read.subscribeKey('testSub', (k, v) => resolve({k, v}))
+    })
+
+    await t.testDB.write.setKey('testSub', true)
+
+    const res = await change
+
+    assert.deepEqual(res, {k: 'testSub', v: true})
+  })
 }
 
 describe('eventTree + flatDB, offline', () => {
