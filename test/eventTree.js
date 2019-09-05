@@ -177,12 +177,27 @@ describe('eventTree + flatDB, online', () => {
 
     it('write key from actor', async () => {
       const db = await actorTree.testDB()
-      await db.write.setKey('hello', true)
+      await db.write.setKey('t1', true)
     })
 
     it('load key from member', async () => {
-      const db = await actorTree.testDB()
-      assert(await db.read.getKey('hello'))
+      const db = await memberTree.testDB()
+      assert(await db.read.getKey('t1'))
+    })
+
+    it('write from actor, subscribe from member', async () => {
+      const dbA = await actorTree.testDB()
+      const dbM = await memberTree.testDB()
+
+      const change = new Promise((resolve, reject) => {
+        dbM.read.subscribeKey('t2', (k, v) => resolve({k, v}))
+      })
+
+      await dbA.write.setKey('t2', true)
+
+      const res = await change
+
+      assert.deepEqual(res, {k: 't2', v: true})
     })
 
     testFlat(t)
