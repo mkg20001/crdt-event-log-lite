@@ -23,7 +23,19 @@
     "protons": "^1.0.1"
   },
   "devDependencies": {
+    "@nodeutils/defaults-deep": "^1.1.0",
     "benchmark": "^2.1.4",
+    "libp2p": "^0.26.1",
+    "libp2p-delegated-content-routing": "^0.3.1",
+    "libp2p-delegated-peer-routing": "^0.3.1",
+    "libp2p-gossipsub": "0.0.4",
+    "libp2p-kad-dht": "^0.16.0",
+    "libp2p-mdns": "^0.12.3",
+    "libp2p-mplex": "^0.8.5",
+    "libp2p-secio": "^0.11.1",
+    "libp2p-spdy": "^0.13.3",
+    "libp2p-tcp": "^0.13.1",
+    "libp2p-websockets": "^0.12.3",
     "mocha": "^6.2.0"
   }
 }

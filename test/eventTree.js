@@ -3,15 +3,34 @@
 /* eslint-env mocha */
 
 const Id = require('peer-id')
+const Info = require('peer-info')
 const assert = require('assert')
 
 const EventLog = require('..')
+const TestSwarm = require('./test-swarm')
+
+const prom = (f) => new Promise((resolve, reject) => f((err, res) => err ? reject(err) : resolve(res)))
 
 const sampleData = [
   ['hello', true],
   ['bye', false],
   ['no', 0],
   ['yes', 1]
+]
+
+const treeKeys = [
+  {
+    collabrate: EventLog.Collabrate.NONE,
+    permission: EventLog.Permission.OWNER,
+    database: EventLog.Database.FLATDB,
+    id: 'testDB'
+  },
+  {
+    collabrate: EventLog.Collabrate.SIMPLE,
+    permission: EventLog.Permission.ANYONE,
+    database: EventLog.Database.FLATDB,
+    id: 'testCollab'
+  }
 ]
 
 const testFlat = (t) => {
@@ -68,22 +87,7 @@ describe('eventTree + flatDB, offline', () => {
       storage: await EventLog.Storage.RAM()
       // swarm: null // means we're offline
     })
-    treeID = await controller.getId(actorId, {
-      keys: [
-        {
-          collabrate: EventLog.Collabrate.NONE,
-          permission: EventLog.Permission.OWNER,
-          database: EventLog.Database.FLATDB,
-          id: 'testDB'
-        },
-        {
-          collabrate: EventLog.Collabrate.SIMPLE,
-          permission: EventLog.Permission.ANYONE,
-          database: EventLog.Database.FLATDB,
-          id: 'testCollab'
-        }
-      ]
-    })
+    treeID = await controller.getId(actorId, { keys: treeKeys })
   })
 
   it('can create a tree with an actor peer-id', async () => {
@@ -108,5 +112,93 @@ describe('eventTree + flatDB, offline', () => {
     })
 
     testFlat(t)
+  })
+})
+
+describe('eventTree + flatDB, online', () => {
+  let actorId
+  let actorInfo
+  let actorSwarm
+  let actorController
+  let actorTree
+
+  let memberId
+  let memberInfo
+  let memberSwarm
+  let memberController
+  let memberTree
+
+  let treeID
+
+  before(async () => {
+    actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
+    memberId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
+
+    actorInfo = new Info(actorId)
+    actorInfo.multiaddrs.add('/ip4/127.0.0.1/tcp/4588')
+    memberInfo = new Info(memberId)
+    memberInfo.multiaddrs.add('/ip4/127.0.0.1/tcp/4589')
+
+    actorSwarm = new TestSwarm({ peerInfo: actorInfo })
+    memberSwarm = new TestSwarm({ peerInfo: memberInfo })
+
+    await Promise.all([actorSwarm, memberSwarm].map(s => prom(cb => s.start(cb))))
+  })
+
+  it('can create event controllers', async () => {
+    actorController = await EventLog.create({
+      actor: actorId,
+      storage: await EventLog.Storage.RAM(),
+      swarm: actorSwarm
+    })
+    memberController = await EventLog.create({
+      actor: actorId,
+      storage: await EventLog.Storage.RAM(),
+      swarm: actorSwarm
+    })
+  })
+
+  it('can create an event tree', async () => {
+    treeID = await actorController.getId(actorId, { keys: treeKeys })
+    actorTree = await actorController.load(treeID)
+    memberTree = await memberController.load(treeID)
+  })
+
+  it('can connect to other peer', async () => {
+    await prom(cb => actorSwarm.dial(memberInfo, cb))
+  })
+
+  describe('perm=owner, collab=none', () => {
+    let t = {}
+
+    before(async () => {
+      t.testDB = await actorTree.testDB()
+    })
+
+    it('write key from actor', async () => {
+      const db = await actorTree.testDB()
+      await db.write.setKey('hello', true)
+    })
+
+    it('load key from member', async () => {
+      const db = await actorTree.testDB()
+      assert(await db.read.getKey('hello'))
+    })
+
+    testFlat(t)
+  })
+
+  describe('perm=any, collab=simple', () => {
+    let t = {}
+
+    before(async () => {
+      t.testDB = await memberTree.testCollab(memberTree.toB58String())
+    })
+
+    testFlat(t)
+  })
+
+  after(async () => {
+    await Promise.all([actorSwarm, memberSwarm].map(s => prom(cb => s.stop(cb))))
   })
 })

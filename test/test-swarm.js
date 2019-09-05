@@ -91,3 +91,5 @@ class Node extends Libp2p {
     super(defaultsDeep(_options, defaults))
   }
 }
+
+module.exports = Node
