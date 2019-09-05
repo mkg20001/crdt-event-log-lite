@@ -89,19 +89,40 @@ message Action {
 
 /* RPC */
 
+enum RPCError {
+  OK            = 0;
+  OTHER         = 1;
+  CHAIN_UNKNOWN = 2;
+  DB_UNKNOWN    = 3;
+  BLOCK_UNKNOWN = 4;
+  MALFORMED_REQ = 5;
+  DEPTH_LENGTH  = 6;
+  COOLDOWN      = 7; // TODO: define cooldown/anti-ddos strategies
+}
+
 enum BlockType {
   EVENT  = 1;
   ACTION = 2;
 }
 
 message BlockRequest {
-  BlockType blockType = 1;
-  bytes blockId = 2; // if type is action and no blockId, peer will give us latest
+  bytes chainId = 1;
+  string dbId = 2;
+
+  BlockType blockType = 3;
+  bytes blockId = 4;
+  int64 blockDepth = 5; // amount of blocks to pull based on previous of that one. protocol max is 20. only Action
+}
+
+message Block {
+  bytes id = 1;
+  bytes content = 2;
 }
 
 message BlockResponse {
-  bytes blockId = 1;
-  bytes blockContent = 2;
+  RPCError error = 1;
+
+  repeated Block blocks = 2;
 }
 
 `)

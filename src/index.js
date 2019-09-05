@@ -36,7 +36,7 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
   let rpcController
   if (isOnline) {
-    rpcController = RPCController(swarm)
+    rpcController = RPCController({swarm})
   }
 
   async function loadChain (fullID) {
