@@ -7,7 +7,7 @@ const lp = require('pull-length-prefixed')
 const debug = require('debug')
 const log = debug('crdt-event-log-lite:rpcController:respond')
 
-const {RPCError, BlockRequest, BlockResponse} = require('./proto')
+const {RPCError, BlockRequest, BlockResponse} = require('../proto')
 
 module.exports = async function ({ swarm, storageBox }) {
   async function handleRPC (peer, req) {

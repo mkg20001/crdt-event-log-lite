@@ -7,7 +7,7 @@ const lp = require('pull-length-prefixed')
 const debug = require('debug')
 const log = debug('crdt-event-log-lite:rpcController:respond')
 
-const {RPCError, BlockRequest, BlockResponse} = require('./proto')
+const {RPCError, BlockRequest, BlockResponse} = require('../proto')
 
 const prom = (f) => new Promise((resolve, reject) => f((err, res) => err ? reject(err) : resolve(res)))
 const defer = () => {
