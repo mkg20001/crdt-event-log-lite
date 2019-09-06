@@ -5,7 +5,7 @@ const Pushable = require('pull-pushable')
 const lp = require('pull-length-prefixed')
 
 const debug = require('debug')
-const log = debug('crdt-event-log-lite:rpcController')
+const log = debug('crdt-event-log-lite:rpcController:respond')
 
 const {RPCError, BlockRequest, BlockResponse} = require('./proto')
 
@@ -81,53 +81,11 @@ async function RPCWrapper (peer, swarm) {
   }
 }
 
-function RPCController ({swarm}) {
-  async function handleRPC (peer, req) {
-    log('handle RPC %O', req)
-  }
-
-  swarm.handle('/event-log-lite/exchange/1.0.0', (ver, conn) => {
-    const out = Pushable()
-
-    conn.getPeerInfo((err, peer) => {
-      if (err) {
-        return log(err)
-      }
-
-      pull(
-        out,
-        lp.encode(),
-        conn,
-        lp.decode(),
-        pull.asyncMap((req, cb) => {
-          const _res = (error, blocks) => {
-            out.push(BlockResponse.encode({ error, blocks }))
-          }
-
-          try {
-            req = BlockRequest.decode(req)
-          } catch (err) {
-            _res(RPCError.MALFORMED)
-            return cb()
-          }
-
-          handleRPC(peer, req).then((res) => {
-            _res(0, res)
-            return cb()
-          }, (err) => {
-            _res(err.code || RPCError.INTERNAL)
-            return cb()
-          })
-        }),
-        pull.drain()
-      )
-    })
-  })
-
+module.exports = function ({ swarm }) {
   const peers = new Map()
   const dials = new Set()
 
-  async function doDial () {
+  async function doDial (peer) {
     let b58 = peer.id.toB58String()
 
     let rpc = peers.get(b58)
@@ -200,28 +158,8 @@ function RPCController ({swarm}) {
     return tryPeer()
   }
 
-  return (chainId) => {
-    return {
-      blockRequest: async (parameters) => {
-        parameters.chainId = chainId
-
-        return requestNetwork(parameters)
-      },
-      // TODO: send eventId as well?
-      subscribe: async ({onEvent}) => {
-        await prom(cb => swarm.pubsub.subscribe(chainId.toString('hex'), async (msg) => {
-          const peer = swarm.peerBook._peers[msg.from]
-          if (peer) {
-            await doDial(peer)
-          }
-          onEvent(null, msg.data)
-        }, cb))
-      },
-      announce: async (eventId, eventData) => {
-        await prom(cb => swarm.pubsub.publish(chainId.toString('hex'), eventData, cb))
-      }
-    }
+  return {
+    doDial,
+    requestNetwork
   }
 }
-
-module.exports = RPCController

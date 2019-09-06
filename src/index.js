@@ -56,12 +56,13 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     const ownerB58 = ownerId.toB58String()
     const isOwner = ownerB58 === actor.toB58String()
 
-    const rpcController = _rpcController ? await _rpcController(chainId) : false
+    const treeStorage = await storageController(chainId)
+
+    const rpcController = _rpcController ? await _rpcController({ chainId, treeStorage }) : false
 
     const treeProcessor = await TreeProcessor({})
     const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, ownerB58, isOwner, config.keys)
 
-    const treeStorage = await storageController(chainId)
     const tree = await Tree({
       storage: treeStorage,
       ownerKey: ownerId,
