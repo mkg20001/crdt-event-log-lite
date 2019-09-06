@@ -11,22 +11,32 @@ const EventLog = require('.')
 
 let actorId
 let controller
+let treeId
 
-suite.add('create chains/trees for test', async () => {
+suite.add('create controller for test', async () => {
   actorId = await Id.create({type: 'rsa', size: 2048}) // use test-peer-ids.tk for 4k tests?
-  global.TOTALLY_NOT_A_HACK = actorId
 
   controller = await EventLog.create({
     actor: actorId,
-    storage: await EventLog.Storage.RAM(),
-    // swarm: null // means we're offline
-    type: EventLog.Type.FlatObjectDB
-    // collabrationStructure: EventLog.Collabrate.BenevolentDictator
+    storage: await EventLog.Storage.RAM()
   })
 })
 
 suite.add(`write to key 5 times`, async () => {
-  let tree = await controller.load(String(Math.random()))
+  let dbId = String(Math.random()).substr(2, 8)
+  treeId = await controller.getId(actorId, {
+    keys: [
+      {
+        collabrate: EventLog.Collabrate.NONE,
+        permission: EventLog.Permission.OWNER,
+        database: EventLog.Database.FLATDB,
+        id: dbId
+      }
+    ]
+  })
+
+  let chain = await controller.load(treeId)
+  let tree = await chain[dbId]()
   const count = 5
 
   for (var i = 0; i < count; i++) {
