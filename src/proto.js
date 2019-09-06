@@ -91,7 +91,7 @@ message Action {
 
 enum RPCError {
   OK            = 0;
-  OTHER         = 1;
+  INTERNAL      = 1;
   CHAIN_UNKNOWN = 2;
   DB_UNKNOWN    = 3;
   BLOCK_UNKNOWN = 4;
