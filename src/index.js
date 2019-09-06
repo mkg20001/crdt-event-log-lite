@@ -34,9 +34,9 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
     keys: Joi.array().items(schemaSubKey).min(1).required()
   }).required()
 
-  let rpcController
+  let _rpcController
   if (isOnline) {
-    rpcController = RPCController({swarm})
+    _rpcController = RPCController({swarm})
   }
 
   async function loadChain (fullID) {
@@ -55,6 +55,8 @@ function EventLog ({actor, storage: storageController, type, swarm, blockHash}) 
 
     const ownerB58 = ownerId.toB58String()
     const isOwner = ownerB58 === actor.toB58String()
+
+    const rpcController = _rpcController ? await _rpcController(chainId) : false
 
     const treeProcessor = await TreeProcessor({})
     const dbs = await utils.makeDatabases(chainId, storageController, treeProcessor, ownerB58, isOwner, config.keys)

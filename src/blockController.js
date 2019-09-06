@@ -4,7 +4,7 @@ async function BlockController (id, {storage, rpcController, tree}) {
   const isOnline = Boolean(rpcController)
 
   if (isOnline) {
-    rpcController.subscribe(id, tree)
+    rpcController.subscribe(tree)
   }
 
   const unprocessed = {}
@@ -35,7 +35,9 @@ async function BlockController (id, {storage, rpcController, tree}) {
       }
     },
     announce: (eventId, event) => {
-
+      if (rpcController) {
+        rpcController.announce(eventId, event)
+      }
     },
     addUnprocessed: (id, data) => {
       unprocessed[id] = data

@@ -27,7 +27,7 @@ async function Tree ({storage, rpcController, ownerKey, dbs}) {
     let hashName
 
     if (!eventId) { // if we just get raw data
-      hashName = event.eventHash // TODO: get hash name from that
+      hashName = event.eventHashType // TODO: get hash name from that
       eventId = await multihashing(data, hashName)
     } else {
       hashName = multihash.decode(eventId).name

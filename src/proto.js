@@ -107,11 +107,10 @@ enum BlockType {
 
 message BlockRequest {
   bytes chainId = 1;
-  string dbId = 2;
 
-  BlockType blockType = 3;
-  bytes blockId = 4;
-  int64 blockDepth = 5; // amount of blocks to pull based on previous of that one. protocol max is 20. only Action
+  BlockType blockType = 2;
+  bytes blockId = 3;
+  int64 blockDepth = 4; // amount of blocks to pull based on previous of that one. protocol max is 20. only Action
 }
 
 message Block {

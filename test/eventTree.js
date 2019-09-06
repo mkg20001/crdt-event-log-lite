@@ -207,7 +207,7 @@ describe('eventTree + flatDB, online', () => {
     let t = {}
 
     before(async () => {
-      t.testDB = await memberTree.testCollab(memberTree.toB58String())
+      t.testDB = await memberTree.testCollab(memberId.toB58String())
     })
 
     testFlat(t)

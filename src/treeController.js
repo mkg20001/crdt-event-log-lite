@@ -30,7 +30,7 @@ async function TreeController (id, {tree, actorKey, blockHash, rpcController, bl
         prev: tree.chainState[`event.${actorB58}`] ? [Buffer.from(tree.chainState[`event.${actorB58}`], 'hex')] : [],
         eventCounter,
         actionId,
-        eventHash: blockHash
+        eventHashType: blockHash
       }
 
       const event = SignedEvent.encode({
